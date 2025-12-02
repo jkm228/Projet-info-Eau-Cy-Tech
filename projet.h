@@ -9,16 +9,16 @@
 typedef struct Station {
     int id_numerique;       // L'identifiant converti en nombre
     char id_str[50];        // L'identifiant complet (ex: "Facility complex...")
-    long capacite;          // Capacité maximale (pour les usines)
-    long volume_traite;     // Somme des volumes reçus
+    int capacite;          // Capacité maximale (pour les usines)
+    int volume_traite;     // Somme des volumes reçus
     struct Station *fils_gauche;
     struct Station *fils_droit;
     int hauteur;            // Hauteur du nœud pour l'équilibrage
 } Station;
 
 // Prototypes des fonctions AVL
-Station* creerStation(int id, char* id_str, long capacite);
-Station* insererStation(Station* noeud, int id, char* id_str, long capacite, long volume_ajout);
+Station* creerStation(int id, char* id_str, int capacite);
+Station* insererStation(Station* noeud, int id, char* id_str, int capacite, int volume_ajout);
 void parcoursInfixe(Station *racine, FILE* flux_sortie);
 void libererAVL(Station* noeud);
 
