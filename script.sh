@@ -1,8 +1,4 @@
-//verifier les ordres; 
-preparer le terrain, 
-lancer le calcul 
-creer les visuels
-chronometrer le tout
+
 DEBUT=$(date +%s%3N)
 verifier les ordres() {
 	# 1. Vérification du nombre minimum d'arguments
