@@ -91,6 +91,16 @@ Station* insererStation(Station* noeud, int id, char* id_str, int capacite, int 
     return noeud; // Retourne le pointeur (inchangé si équilibré)
 }
 
+Station* rechercherStation(Station* racine, int id) {
+    if (racine == NULL || racine->id_numerique == id)
+        return racine;
+
+    if (id < racine->id_numerique)
+        return rechercherStation(racine->fg, id);
+    
+    return rechercherStation(racine->fd, id);
+}
+
 void parcoursInfixe(Station *racine, FILE* flux_sortie);
 
 void libererAVL(Station* noeud) {
