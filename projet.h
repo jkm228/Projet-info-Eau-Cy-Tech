@@ -5,23 +5,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-// Structure représentant un nœud de l'arbre AVL (une Station ou Usine)
-typedef struct Station {
-    int id_numerique;       // L'identifiant converti en nombre
-    char id_str[50];        // L'identifiant complet (ex: "Facility complex...")
-    int capacite;          // Capacité maximale (pour les usines)
-    int volume_traite;     // Somme des volumes reçus
-    struct Station *fils_gauche;
-    struct Station *fils_droit;
-    int hauteur;            // Hauteur du nœud pour l'équilibrage
-} Station;
-
-// Structure représentant un TUYAU 
-typedef struct Connexion {
-    struct Station* station_fils; // Vers qui va l'eau ?
-    float pourcentage_fuite;      // Quelle quantité est perdue ici ? (colonne 5)
-    struct Connexion* suivant;    // Liste chaînée des autres tuyaux partant du même parent
-} Connexion;
 
 Station* creerStation(int id, char* id_str, int capacite){
     Station* noeud;
@@ -58,15 +41,10 @@ Station* insererStation(Station* noeud, int id, char* id_str, int capacite, int 
         return noeud;
     }
 
-    // 2. Mise à jour de la hauteur de l'ancêtre
     noeud->hauteur = 1 + max(hauteur(noeud->fils_gauche), hauteur(noeud->fils_droit));
 
-    // 3. Calcul du facteur d'équilibre 
     int equilibre = facteurEquilibre(noeud);
 
-    // 4. Rééquilibrage si nécessaire (Algorithme Slide 196) 
-    
-    // Cas Droite Lourd (Equilibre >= 2)
     if (equilibre >= 2) {
         // Si le fils droit est équilibré ou penche à droite -> Rotation Simple Gauche
         if (facteurEquilibre(noeud->fils_droit) >= 0) {
@@ -79,7 +57,6 @@ Station* insererStation(Station* noeud, int id, char* id_str, int capacite, int 
 
     // Cas Gauche Lourd (Equilibre <= -2)
     if (equilibre <= -2) {
-        // Si le fils gauche est équilibré ou penche à gauche -> Rotation Simple Droite
         if (facteurEquilibre(noeud->fils_gauche) <= 0) {
             return rotationDroite(noeud);
         } else {
