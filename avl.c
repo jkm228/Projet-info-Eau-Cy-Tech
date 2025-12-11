@@ -1,5 +1,5 @@
-#ifndef EN_TETE_H
-#define EN_TETE_H
+#include "wildwater.h"
+
 
 #include <stdio.h>
 #include <stdlib.h>
