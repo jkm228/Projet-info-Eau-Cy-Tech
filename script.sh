@@ -1,8 +1,5 @@
 #!/bin/bash
-# Le "hash-bang" pour spécifier l'interpréteur [cite: 921]
 
-# --- VARIABLES [cite: 930] ---
-# On capture le temps de début. 'date +%s' renvoie les secondes (commande exécutée [cite: 986])
 DEBUT=$(date +%s)
 EXECUTABLE="c-wire"
 FICHIER_SORTIE="stats.csv"
@@ -20,7 +17,7 @@ afficher_aide() {
 
 # Fonction de vérification des arguments
 verifier_ordres() {
-    # Vérification du nombre d'arguments ($#) 
+    # Vérification du nombre d'arguments  
     # On a besoin d'au moins 2 arguments (fichier + commande)
     if [ $# -lt 2 ]; then
         echo "Erreur : Arguments manquants."
@@ -34,7 +31,7 @@ verifier_ordres() {
         exit 2
     fi
 
-    # Structure "Selon Cas" pour vérifier la commande 
+   
     case "$2" in
         "histo")
             # Pour histo, il faut 3 arguments (le 3ème est max, src ou real)
@@ -50,7 +47,7 @@ verifier_ordres() {
             ;;
         
         "leaks")
-            # Pour leaks, il faut 3 arguments (le 3ème est l'ID)
+            
             if [ $# -ne 3 ]; then
                 echo "Erreur : 'leaks' nécessite un identifiant."
                 exit 4
@@ -58,7 +55,7 @@ verifier_ordres() {
             ;;
         
         *)
-            # Cas par défaut (*) si la commande n'est pas reconnue [cite: 1396]
+            
             echo "Erreur : Commande '$2' inconnue."
             afficher_aide
             exit 1
@@ -99,7 +96,7 @@ lancer_calcul() {
 
 # Fonction pour générer les graphiques avec Gnuplot
 creer_visuels() {
-    # On ne fait ça que si la commande est "histo" (égalité de chaînes) [cite: 1272]
+   
     if [ "$2" = "histo" ]; then
         
         # Vérification que le fichier de stats existe
@@ -108,16 +105,15 @@ creer_visuels() {
             exit 1
         fi
 
-        # Tri et extraction des données (Commandes courantes [cite: 1487])
-        # sort -t';' -k2,2n : Trie sur la 2ème colonne (numérique)
+       
         sort -t';' -k2,2n "$FICHIER_SORTIE" > data_triee.tmp
 
-        # head : récupère les premières lignes [cite: 1479]
+       
         head -n 5 data_triee.tmp > data_min.dat
-        # tail : récupère les dernières lignes [cite: 1479]
+        
         tail -n 5 data_triee.tmp > data_max.dat
 
-        # Appel à Gnuplot via redirection d'entrée (Here-Doc) 
+       
         gnuplot <<- EOF
             set terminal png size 1000,600
             set output 'graph_min.png'
@@ -132,7 +128,7 @@ creer_visuels() {
             plot "data_max.dat" using 2:xtic(1) title "Volume"
 EOF
         
-        # Suppression des fichiers temporaires (rm) [cite: 1483]
+        # Suppression des fichiers temporaires (rm) 
         rm data_triee.tmp data_min.dat data_max.dat
     fi
 }
@@ -140,14 +136,14 @@ EOF
 # Fonction pour afficher le temps
 afficher_temps() {
     FIN=$(date +%s)
-    # Calcul arithmétique sur des entiers $((...)) 
+    
     DUREE=$((FIN - DEBUT))
     echo "Durée totale : $DUREE secondes"
 }
 
 # --- EXÉCUTION DU SCRIPT ---
 # Appel des fonctions dans l'ordre
-# "$@" représente tous les arguments passés au script 
+
 
 verifier_ordres "$@"
 preparer_terrain
