@@ -1,18 +1,10 @@
 #ifndef MAIN_H
 #define MAIN_H
 
-// Bibliothèques standards utilisées dans le main
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+// Inclusion des modules
+#include "wildwater.h" // Pour l'AVL
+#include "file.h"      // Pour le CSV
 
-// Inclusion de notre structure de données
-#include "wildwater.h"
-
-// Constantes
-#define TAILLE_BUFFER 1024
-
-// Si tu décides un jour de créer des fonctions spécifiques pour le parsing
-// (ex: traiter_ligne, verifier_arguments), leurs prototypes iront ici.
+// Tu peux ajouter ici des prototypes spécifiques au main si besoin
 
 #endif
