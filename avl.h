@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-// --- STRUCTURES (Conformes Info3_03 et Info3_05) ---
+// --- STRUCTURES ---
 
 // Structure Station (Nœud AVL)
 typedef struct Station {
@@ -18,7 +18,7 @@ typedef struct Station {
     int hauteur;              // Pour l'équilibrage AVL
 } Station;
 
-// Structure Connexion (Liste Chaînée pour les fuites - Info3_01)
+// Structure Connexion (Liste Chaînée pour les fuites)
 typedef struct Connexion {
     struct Station* station_fils;
     float pourcentage_fuite;
@@ -32,7 +32,7 @@ int max(int a, int b);
 int hauteur(Station *N);
 int facteurEquilibre(Station *N);
 
-// Rotations (Info3_05_AVL_rotations)
+// Rotations
 Station* rotationDroite(Station *y);
 Station* rotationGauche(Station *x);
 Station* doubleRotationGaucheDroite(Station *z);
@@ -41,7 +41,11 @@ Station* doubleRotationDroiteGauche(Station *z);
 // Gestion Arbre
 Station* creerStation(int id, char* id_str, int capacite);
 Station* insererStation(Station* noeud, int id, char* id_str, int capacite, int volume_ajout);
-Station* rechercherStation(Station* racine, int id);
+
+// --- LA LIGNE CORRIGÉE EST ICI ---
+Station* rechercherStation(Station* racine, int id, char* id_str);
+// --------------------------------
+
 void parcoursInfixe(Station *racine, FILE* flux_sortie);
 void libererAVL(Station* noeud);
 
