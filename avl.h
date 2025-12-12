@@ -1,22 +1,24 @@
 #ifndef WILDWATER_H
 #define WILDWATER_H
 
-#include <stdio.h>  // Nécessaire pour le type FILE* dans parcoursInfixe
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
-// --- STRUCTURES ---
+// --- STRUCTURES (Conformes Info3_03 et Info3_05) ---
 
-// Structure AVL (Station)
+// Structure Station (Nœud AVL)
 typedef struct Station {
     int id_numerique;
     char id_str[50];
     int capacite;
-    long volume_traite;
+    long volume_traite;       // long pour éviter l'overflow
     struct Station *fils_gauche;
     struct Station *fils_droit;
-    int hauteur;
+    int hauteur;              // Pour l'équilibrage AVL
 } Station;
 
-// Structure Liste Chaînée (Connexion)
+// Structure Connexion (Liste Chaînée pour les fuites - Info3_01)
 typedef struct Connexion {
     struct Station* station_fils;
     float pourcentage_fuite;
@@ -30,7 +32,7 @@ int max(int a, int b);
 int hauteur(Station *N);
 int facteurEquilibre(Station *N);
 
-// Rotations
+// Rotations (Info3_05_AVL_rotations)
 Station* rotationDroite(Station *y);
 Station* rotationGauche(Station *x);
 Station* doubleRotationGaucheDroite(Station *z);
