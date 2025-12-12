@@ -1,39 +1,95 @@
-#include "main.h"
+#include "wildwater.h"
 
-int main(int argc, char** argv) {
-    if (argc < 4) { return 1; }
 
-    char* chemin_entree = argv[1];
-    char* commande = argv[2];
-    char* option = argv[3];
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
-    FILE* flux_entree = ouvrir_fichier(chemin_entree, "r");
-    FILE* flux_sortie = ouvrir_fichier("stats.csv", "w");
 
-    Station* racine = NULL;
+Station* creerStation(int id, char* id_str, int capacite){
+    Station* noeud;
+    noeud = (Station*)malloc(sizeof(Station));
+    if (noeud == NULL) {
+        printf("Erreur d'allocation mémoire\n");
+        exit(1);
+    }
 
-    // Buffer pour l'ID (Texte)
-    char id_str[50];
-    long cap = 0;
+    noeud->id_numerique = id;
+    noeud->id_str[49] = '\0'; // Sécurité pour la chaîne de caractères
+    noeud->capacite = capacite;
+    noeud->volume_traite = 0; // Initialisation logique à 0
+    noeud->fils_gauche = NULL;
+    noeud->fils_droit = NULL;
+    noeud->hauteur = 1;
+    return noeud;
+}
 
-    // On passe id_str à lire_ligne_csv
-    while (lire_ligne_csv(flux_entree, id_str, &cap)) {
-        
-        if (strcmp(commande, "histo") == 0) {
-             // On ignore les lignes vides ou sans capacité
-            if (strlen(id_str) > 0 && cap > 0) {
-                // On insère avec l'ID TEXTE. 
-                // On met 0 pour l'ID numérique car il ne sert plus au tri.
-                racine = insererStation(racine, 0, id_str, 0, cap);
-            }
+Station* insererStation(Station* noeud, int id, char* id_str, int capacite, int volume_ajout){
+    if (noeud == NULL) {
+        Station* temp = creerStation(id, id_str, capacite);
+        temp->volume_traite = volume_ajout; 
+        return temp;
+    }
+
+    if (id < noeud->id_numerique)
+        noeud->fils_gauche = insererStation(noeud->fils_gauche, id, id_str, capacite, volume_ajout);
+    else if (id > noeud->id_numerique)
+        noeud->fils_droit = insererStation(noeud->fils_droit, id, id_str, capacite, volume_ajout);
+    else {
+        // Égalité : Le nœud existe, on met à jour le volume (somme)
+        noeud->volume_traite += volume_ajout;
+        return noeud;
+    }
+
+    noeud->hauteur = 1 + max(hauteur(noeud->fils_gauche), hauteur(noeud->fils_droit));
+
+    int equilibre = facteurEquilibre(noeud);
+
+    if (equilibre >= 2) {
+        // Si le fils droit est équilibré ou penche à droite -> Rotation Simple Gauche
+        if (facteurEquilibre(noeud->fils_droit) >= 0) {
+            return rotationGauche(noeud);
+        } else {
+            // Sinon -> Double Rotation Gauche
+            return doubleRotationGauche(noeud);
         }
     }
 
-    parcoursInfixe(racine, flux_sortie);
-    
-    libererAVL(racine);
-    fermer_fichier(flux_entree);
-    fermer_fichier(flux_sortie);
+    // Cas Gauche Lourd (Equilibre <= -2)
+    if (equilibre <= -2) {
+        if (facteurEquilibre(noeud->fils_gauche) <= 0) {
+            return rotationDroite(noeud);
+        } else {
+            // Sinon -> Double Rotation Droite
+            return doubleRotationDroite(noeud);
+        }
+    }
 
-    return 0;
+    return noeud; // Retourne le pointeur (inchangé si équilibré)
 }
+
+Station* rechercherStation(Station* racine, int id) {
+    if (racine == NULL || racine->id_numerique == id)
+        return racine;
+
+    if (id < racine->id_numerique)
+        return rechercherStation(racine->fg, id);
+    
+    return rechercherStation(racine->fd, id);
+}
+
+void parcoursInfixe(Station *racine, FILE* flux_sortie);
+
+void libererAVL(Station* noeud) {
+    if (noeud != NULL) {
+        libererAVL(noeud->fils_gauche);
+        libererAVL(noeud->fils_droit);
+        free(noeud);
+    }
+}
+
+// Prototypes utilitaires
+int max(int a, int b);
+int obtenirHauteur(Station *N);
+
+#endif
