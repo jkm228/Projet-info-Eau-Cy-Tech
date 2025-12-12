@@ -1,13 +1,13 @@
 #!/bin/bash
+# Le "hash-bang" pour spécifier l'interpréteur
 
+# --- VARIABLES ---
 DEBUT=$(date +%s)
 EXECUTABLE="c-wire"
 FICHIER_SORTIE="stats.csv"
-FICHIER_LOG="c-wire.log"
 
-# --- FONCTIONS  ---
+# --- FONCTIONS ---
 
-# Fonction pour afficher l'aide si besoin
 afficher_aide() {
     echo "Usage: $0 <fichier_csv> <commande> [option]"
     echo "Commandes:"
@@ -15,31 +15,25 @@ afficher_aide() {
     echo "  leaks <identifiant>"
 }
 
-# Fonction de vérification des arguments
 verifier_ordres() {
-    # Vérification du nombre d'arguments  
-    # On a besoin d'au moins 2 arguments (fichier + commande)
+    # On a besoin d'au moins 2 arguments
     if [ $# -lt 2 ]; then
         echo "Erreur : Arguments manquants."
         afficher_aide
         exit 1
     fi
 
-    # Vérification si le fichier d'entrée existe (-f) 
     if [ ! -f "$1" ]; then
         echo "Erreur : Le fichier '$1' n'existe pas."
         exit 2
     fi
 
-   
     case "$2" in
         "histo")
-            # Pour histo, il faut 3 arguments (le 3ème est max, src ou real)
             if [ $# -ne 3 ]; then
                 echo "Erreur : 'histo' nécessite une option (max, src, real)."
                 exit 3
             fi
-            # On vérifie que le 3ème argument est valide
             if [ "$3" != "max" ] && [ "$3" != "src" ] && [ "$3" != "real" ]; then
                 echo "Erreur : Option '$3' invalide."
                 exit 3
@@ -47,7 +41,6 @@ verifier_ordres() {
             ;;
         
         "leaks")
-            
             if [ $# -ne 3 ]; then
                 echo "Erreur : 'leaks' nécessite un identifiant."
                 exit 4
@@ -55,7 +48,6 @@ verifier_ordres() {
             ;;
         
         *)
-            
             echo "Erreur : Commande '$2' inconnue."
             afficher_aide
             exit 1
@@ -63,13 +55,10 @@ verifier_ordres() {
     esac
 }
 
-# Fonction pour compiler le programme C
 preparer_terrain() {
-    # On teste si l'exécutable existe et s'il est exécutable (-x) 
     if [ ! -x "$EXECUTABLE" ]; then
         echo "Compilation en cours..."
         make
-        # On vérifie le code retour de la commande make ($?) [cite: 1470]
         if [ $? -ne 0 ]; then
             echo "Erreur : La compilation a échoué."
             exit 1
@@ -77,43 +66,48 @@ preparer_terrain() {
     fi
 }
 
-# Fonction pour lancer le programme C
 lancer_calcul() {
-    # Nettoyage de l'ancien fichier de sortie s'il existe (-f)
     if [ -f "$FICHIER_SORTIE" ]; then
         rm "$FICHIER_SORTIE"
     fi
 
-    # Exécution du programme C avec les arguments ($1, $2, $3) 
+    # Lancement du C
     ./"$EXECUTABLE" "$1" "$2" "$3"
 
-    # Vérification du succès du programme C ($?)
     if [ $? -ne 0 ]; then
         echo "Erreur lors de l'exécution du programme C."
         exit 1
     fi
 }
 
-# Fonction pour générer les graphiques avec Gnuplot
 creer_visuels() {
-   
+    # On génère le graphique seulement pour la commande "histo"
     if [ "$2" = "histo" ]; then
         
-        # Vérification que le fichier de stats existe
         if [ ! -f "$FICHIER_SORTIE" ]; then
             echo "Erreur : Le fichier de résultats n'a pas été créé."
             exit 1
         fi
 
-       
-        sort -t';' -k2,2n "$FICHIER_SORTIE" > data_triee.tmp
+        # --- CORRECTION ICI : Choix de la colonne ---
+        # Si option = max, on regarde la colonne 2 (Capacité)
+        # Sinon (src/real), on regarde la colonne 3 (Volume)
+        if [ "$3" = "max" ]; then
+            COL=2
+        else
+            COL=3
+        fi
 
-       
+        echo "Génération des graphiques sur la colonne $COL..."
+
+        # Tri numérique sur la bonne colonne (-k$COL)
+        sort -t';' -k${COL},${COL}n "$FICHIER_SORTIE" > data_triee.tmp
+
+        # Extraction des 5 premiers et 5 derniers
         head -n 5 data_triee.tmp > data_min.dat
-        
         tail -n 5 data_triee.tmp > data_max.dat
 
-       
+        # Appel Gnuplot avec la colonne dynamique
         gnuplot <<- EOF
             set terminal png size 1000,600
             set output 'graph_min.png'
@@ -121,29 +115,28 @@ creer_visuels() {
             set style data histograms
             set style fill solid
             set datafile separator ";"
-            plot "data_min.dat" using 2:xtic(1) title "Volume"
+            set ylabel "Quantité"
+            set xlabel "ID Station"
+            # On plot la colonne COL en Y, et la colonne 1 (ID) en étiquette X
+            plot "data_min.dat" using ${COL}:xtic(1) title "$3"
 
             set output 'graph_max.png'
             set title "Top 5 Max - $3"
-            plot "data_max.dat" using 2:xtic(1) title "Volume"
+            plot "data_max.dat" using ${COL}:xtic(1) title "$3"
 EOF
         
-        # Suppression des fichiers temporaires (rm) 
+        # Nettoyage
         rm data_triee.tmp data_min.dat data_max.dat
     fi
 }
 
-# Fonction pour afficher le temps
 afficher_temps() {
     FIN=$(date +%s)
-    
     DUREE=$((FIN - DEBUT))
     echo "Durée totale : $DUREE secondes"
 }
 
-# --- EXÉCUTION DU SCRIPT ---
-# Appel des fonctions dans l'ordre
-
+# --- EXÉCUTION ---
 
 verifier_ordres "$@"
 preparer_terrain
