@@ -1,48 +1,67 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <errno.h>
+#include "wildwater.h"
 #include "file.h"
 
-FILE* ouvrir_fichier(char* chemin, char* mode) {
-    FILE* f = fopen(chemin, mode);
-    if (f == NULL) {
-        fprintf(stderr, "Erreur critique : Impossible d'ouvrir le fichier %s\n", chemin);
-        exit(2);
-    }
-    return f;
-}
+void chargerDonnees(const char* chemin_fichier, Station** racine, const char* option) {
+    FILE* fichier = fopen(chemin_fichier, "r");
 
-void fermer_fichier(FILE* f) {
-    if (f != NULL) fclose(f);
-}
-
-// Nouvelle logique de parsing adaptée à TON fichier
-int lire_ligne_csv(FILE* f, char* id_station, long* capacite) {
-    char buffer[TAILLE_LIGNE];
-    char* token;
-
-    // Initialisation
-    strcpy(id_station, ""); 
-    *capacite = 0;
-
-    if (fgets(buffer, TAILLE_LIGNE, f) == NULL) return 0;
-
-    // Col 1 : Amont (souvent "-" pour les sources) - On ignore
-    token = strtok(buffer, ";");
-
-    // Col 2 : ID STATION (ex: "Source #XL900000Q") - C'est celui qu'on veut !
-    token = strtok(NULL, ";");
-    if (token != NULL) {
-        strcpy(id_station, token);
+    if (fichier == NULL) {
+        fprintf(stderr, "Erreur d'ouverture du fichier %s : %s\n", chemin_fichier, strerror(errno));
+        exit(1);
     }
 
-    // Col 3 : Destination - On ignore
-    token = strtok(NULL, ";");
+    char buffer[1024];
 
-    // Col 4 : CAPACITÉ (ex: "517") - C'est le volume !
-    token = strtok(NULL, ";");
-    if (token != NULL && strcmp(token, "-") != 0) {
-        *capacite = atol(token);
+    fgets(buffer, 1024, fichier);
+
+    while (fgets(buffer, 1024, fichier) != NULL) {
+        
+        int id_a = 0;
+        int id_b = 0;
+        long capacite = 0;
+        long debit = 0;
+
+        char* token = strtok(buffer, ";");
+        if (token != NULL && strcmp(token, "-") != 0) {
+            id_a = atoi(token);
+        }
+
+        token = strtok(NULL, ";");
+        if (token != NULL && strcmp(token, "-") != 0) {
+            id_b = atoi(token);
+        }
+
+        token = strtok(NULL, ";");
+        if (token != NULL && strcmp(token, "-") != 0) {
+            if (strchr(token, '-') == NULL) {
+                 capacite = atol(token);
+            }
+        }
+
+        token = strtok(NULL, ";");
+        if (token != NULL && strcmp(token, "-") != 0) {
+             if (strchr(token, '-') == NULL) {
+                debit = atol(token);
+             }
+        }
+
+        if (strcmp(option, "max") == 0) {
+            if (id_a != 0 && capacite > 0) {
+                *racine = insererStation(*racine, id_a, "Station", 0, capacite);
+            }
+        }
+        else {
+            if (id_a != 0 && id_b != 0 && debit > 0) {
+                 *racine = insererStation(*racine, id_b, "Client", 0, debit);
+            }
+            else if (id_a != 0 && debit > 0) {
+                 *racine = insererStation(*racine, id_a, "Producteur", 0, debit);
+            }
+        }
     }
 
-    // Col 5 : Fuite - On ignore pour l'instant
-    
-    return 1;
+    fclose(fichier);
 }
