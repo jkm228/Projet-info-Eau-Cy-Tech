@@ -4,7 +4,7 @@
 #include "wildwater.h"
 #include "file.h"
 
-#define TAILLE_BUFFER 1024
+#define TAILLE_BUFFER 2048
 
 void chargerDonnees(const char* chemin_fichier, Station** racine, const char* option) {
     FILE* fichier = fopen(chemin_fichier, "r");
@@ -14,65 +14,64 @@ void chargerDonnees(const char* chemin_fichier, Station** racine, const char* op
     }
 
     char buffer[TAILLE_BUFFER];
-    // On ignore la première ligne (en-têtes) si nécessaire
-    // fgets(buffer, TAILLE_BUFFER, fichier);
+    // On passe l'en-tête
+    fgets(buffer, TAILLE_BUFFER, fichier);
+
+    const char* separateurs = ";\r\n";
 
     while (fgets(buffer, TAILLE_BUFFER, fichier) != NULL) {
-        char id_origine[50] = "";
-        char id_dest[50] = "";
-        long capacite = 0;
-        long debit = 0;
+        char col1[50] = "-";
+        char col2[50] = "-";
+        char col3[50] = "-";
+        char col4[50] = "-";
+        char col5[50] = "-"; 
         char* token;
 
-        // --- Parsing des 4 colonnes ---
-        // Format supposé : ID_A;ID_B;CAPACITE;DEBIT (ou LOAD)
+        // --- LECTURE ROBUSTE DES 5 COLONNES ---
+        token = strtok(buffer, separateurs);
+        if (token) strncpy(col1, token, 49);
 
-        // Colonne 1 : ID Origine (Source)
-        token = strtok(buffer, ";");
-        if (token != NULL && strcmp(token, "-") != 0) {
-            strncpy(id_origine, token, 49);
-            id_origine[49] = '\0';
-        }
+        token = strtok(NULL, separateurs);
+        if (token) strncpy(col2, token, 49);
 
-        // Colonne 2 : ID Destination (Station/Usine)
-        token = strtok(NULL, ";");
-        if (token != NULL && strcmp(token, "-") != 0) {
-            strncpy(id_dest, token, 49);
-            id_dest[49] = '\0';
-        }
+        token = strtok(NULL, separateurs);
+        if (token) strncpy(col3, token, 49);
 
-        // Colonne 3 : Capacité
-        token = strtok(NULL, ";");
-        if (token != NULL && strcmp(token, "-") != 0) {
-            capacite = atol(token);
-        }
-
-        // Colonne 4 : Débit (Load)
-        token = strtok(NULL, ";\n"); // \n pour la fin de ligne
-        if (token != NULL && strcmp(token, "-") != 0) {
-            debit = atol(token);
-        }
-
-        // --- Logique d'insertion selon l'option ---
+        token = strtok(NULL, separateurs);
+        if (token) strncpy(col4, token, 49);
         
-        // CAS 1 : Option MAX (On veut la capacité de la station)
+        token = strtok(NULL, separateurs);
+        if (token) strncpy(col5, token, 49);
+
+        // --- CONVERSION (Float pour gérer "1.381") ---
+        // On utilise atof pour lire les virgules, puis on convertit en long
+        long val3 = atol(col3); 
+        long val4 = (long)atof(col4); // Capacity (parfois float ?)
+        long val5 = (long)atof(col5); // Débit (souvent float type 1.381)
+
+        // --- LOGIQUE ---
         if (strcmp(option, "max") == 0) {
-            // Si on a un ID Destination et une Capacité, c'est la définition de la station
-            if (strlen(id_dest) > 0 && capacite > 0) {
-                *racine = insererStation(*racine, 0, id_dest, capacite, 0);
-            }
-            // Parfois la station est définie dans la col 1 (cas rares), sécurité :
-            else if (strlen(id_origine) > 0 && capacite > 0 && strlen(id_dest) == 0) {
-                *racine = insererStation(*racine, 0, id_origine, capacite, 0);
+            // Pour MAX, on prend la capacité (souvent Col 4, parfois Col 3)
+            // On ignore le débit actuel (Col 5)
+            long capacite = (val4 > 0) ? val4 : val3;
+            
+            if (capacite > 0) {
+                if (strcmp(col2, "-") != 0 && strcmp(col3, "-") == 0) {
+                    *racine = insererStation(*racine, 0, col2, capacite, 0);
+                }
+                else if (strcmp(col1, "-") != 0 && strcmp(col2, "-") == 0) {
+                    *racine = insererStation(*racine, 0, col1, capacite, 0);
+                }
             }
         }
-        
-        // CAS 2 : Option SRC ou REAL (On veut cumuler le volume arrivant)
         else if (strcmp(option, "src") == 0 || strcmp(option, "real") == 0) {
-            // Pour ces modes, on s'intéresse à ce qui arrive dans la station (Destination)
-            // On ajoute le 'debit' au volume traité de la station 'id_dest'
-            if (strlen(id_dest) > 0 && debit > 0) {
-                *racine = insererStation(*racine, 0, id_dest, 0, debit);
+            // Pour SRC/REAL, le débit est en Col 5 (ex: 1.381).
+            // Si Col 5 est vide/nul, on regarde Col 4 par sécurité.
+            long debit = (val5 > 0) ? val5 : val4;
+            
+            // On accumule le débit sur la Destination (Col 3)
+            if (debit > 0 && strcmp(col3, "-") != 0) {
+                *racine = insererStation(*racine, 0, col3, 0, debit);
             }
         }
     }
