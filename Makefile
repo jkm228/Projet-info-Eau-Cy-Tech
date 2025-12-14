@@ -11,10 +11,10 @@ $(EXEC): main.o avl.o file.o
 
 # Compilation séparée des modules
 
-main.o: main.c main.h wildwater.h file.h
+main.o: main.c main.h avl.h file.h
 	$(CC) $(CFLAGS) -c main.c
 
-avl.o: avl.c wildwater.h
+avl.o: avl.c avl.h
 	$(CC) $(CFLAGS) -c avl.c
 
 file.o: file.c file.h
