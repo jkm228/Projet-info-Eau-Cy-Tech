@@ -53,7 +53,7 @@ Station* creerStation(int id, char* id_str, int capacite) {
     if (noeud == NULL) exit(1);
     
     noeud->id_numerique = id;
-    strcpy(noeud->id_str, id_str); // Copie du texte
+    strcpy(noeud->id_str, id_str);
     noeud->capacite = capacite;
     noeud->volume_traite = 0;
     noeud->fils_gauche = NULL;
@@ -69,7 +69,6 @@ Station* insererStation(Station* noeud, int id, char* id_str, int capacite, int 
         return temp;
     }
 
-    // IMPORTANT : Comparaison de TEXTE (strcmp)
     int cmp = strcmp(id_str, noeud->id_str);
 
     if (cmp < 0)
@@ -77,12 +76,14 @@ Station* insererStation(Station* noeud, int id, char* id_str, int capacite, int 
     else if (cmp > 0)
         noeud->fils_droit = insererStation(noeud->fils_droit, id, id_str, capacite, volume_ajout);
     else {
-        // La station existe déjà, on ajoute le volume
+        // Si la station existe déjà :
+        // 1. On garde la capacité si elle est définie (pour le mode max)
+        if (capacite > 0) noeud->capacite = capacite;
+        // 2. On cumule le volume (pour les modes src/real)
         noeud->volume_traite += volume_ajout;
         return noeud;
     }
 
-    // Equilibrage
     noeud->hauteur = 1 + max(hauteur(noeud->fils_gauche), hauteur(noeud->fils_droit));
     int equilibre = facteurEquilibre(noeud);
 
@@ -101,7 +102,7 @@ Station* insererStation(Station* noeud, int id, char* id_str, int capacite, int 
     return noeud;
 }
 
-// Recherche (optionnelle pour l'instant)
+// Recherche
 Station* rechercherStation(Station* racine, int id, char* id_str) {
     if (racine == NULL || strcmp(racine->id_str, id_str) == 0)
         return racine;
@@ -110,21 +111,21 @@ Station* rechercherStation(Station* racine, int id, char* id_str) {
     return rechercherStation(racine->fils_droit, id, id_str);
 }
 
-// --- AFFICHAGE (Celle qui manquait !) ---
+// --- AFFICHAGE (CORRIGÉ POUR TRI INVERSE) ---
 void parcoursInfixe(Station *racine, FILE* flux_sortie) {
     if (racine != NULL) {
-        parcoursInfixe(racine->fils_gauche, flux_sortie);
+        // ORDRE INVERSÉ : DROIT -> RACINE -> GAUCHE
+        // Cela permet de trier de Z à A (Décroissant alphabétique)
+        parcoursInfixe(racine->fils_droit, flux_sortie);
         
-        // C'est ICI qu'on écrit dans le fichier stats.csv
-        // Format : ID;CAPACITÉ;VOLUME
         if (flux_sortie != NULL) {
-            fprintf(flux_sortie, "%s;%ld;%ld\n", 
+            fprintf(flux_sortie, "%s;%d;%ld\n", 
                     racine->id_str, 
-                    racine->volume_traite, // On utilise volume_traite comme valeur accumulée
+                    racine->capacite, 
                     racine->volume_traite);
         }
 
-        parcoursInfixe(racine->fils_droit, flux_sortie);
+        parcoursInfixe(racine->fils_gauche, flux_sortie);
     }
 }
 
