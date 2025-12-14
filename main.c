@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "wildwater.h"
+#include "avl.h"
 #include "file.h"
 
 int main(int argc, char** argv) {
