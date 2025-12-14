@@ -1,5 +1,5 @@
-#ifndef WILDWATER_H
-#define WILDWATER_H
+#ifndef AVL_H
+#define AVL_H
 
 #include <stdio.h>
 #include <stdlib.h>
