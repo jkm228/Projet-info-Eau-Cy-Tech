@@ -1,152 +1,112 @@
 #!/bin/bash
 
-DEBUT=$(date +%s)
+# --- VÉRIFICATIONS PRÉLIMINAIRES ---
+if [ $# -lt 2 ]; then
+    echo "Erreur : Arguments manquants."
+    echo "Usage: $0 <fichier_dat> <station_type> [consumer_type]"
+    echo "Exemple: $0 c-wildwater_v3.dat histo max"
+    exit 1
+fi
+
+FICHIER_DAT="$1"
+COMMANDE="$2"
+OPTION="$3"
 EXECUTABLE="c-wire"
-FICHIER_SORTIE="stats.csv"
-FICHIER_LOG="c-wire.log"
 
-# --- FONCTIONS  ---
+if [ ! -f "$FICHIER_DAT" ]; then
+    echo "Erreur : Le fichier '$FICHIER_DAT' est introuvable."
+    exit 2
+fi
 
-# Fonction pour afficher l'aide si besoin
-afficher_aide() {
-    echo "Usage: $0 <fichier_csv> <commande> [option]"
-    echo "Commandes:"
-    echo "  histo max|src|real"
-    echo "  leaks <identifiant>"
-}
-
-# Fonction de vérification des arguments
-verifier_ordres() {
-    # Vérification du nombre d'arguments  
-    # On a besoin d'au moins 2 arguments (fichier + commande)
-    if [ $# -lt 2 ]; then
-        echo "Erreur : Arguments manquants."
-        afficher_aide
-        exit 1
+# Vérification de l'option pour histo
+if [ "$COMMANDE" = "histo" ]; then
+    if [ "$OPTION" != "max" ] && [ "$OPTION" != "src" ] && [ "$OPTION" != "real" ]; then
+        echo "Erreur : Option invalide pour histo. Choisir : max, src, ou real."
+        exit 3
     fi
+fi
 
-    # Vérification si le fichier d'entrée existe (-f) 
-    if [ ! -f "$1" ]; then
-        echo "Erreur : Le fichier '$1' n'existe pas."
-        exit 2
-    fi
-
-   
-    case "$2" in
-        "histo")
-            # Pour histo, il faut 3 arguments (le 3ème est max, src ou real)
-            if [ $# -ne 3 ]; then
-                echo "Erreur : 'histo' nécessite une option (max, src, real)."
-                exit 3
-            fi
-            # On vérifie que le 3ème argument est valide
-            if [ "$3" != "max" ] && [ "$3" != "src" ] && [ "$3" != "real" ]; then
-                echo "Erreur : Option '$3' invalide."
-                exit 3
-            fi
-            ;;
-        
-        "leaks")
-            
-            if [ $# -ne 3 ]; then
-                echo "Erreur : 'leaks' nécessite un identifiant."
-                exit 4
-            fi
-            ;;
-        
-        *)
-            
-            echo "Erreur : Commande '$2' inconnue."
-            afficher_aide
-            exit 1
-            ;;
-    esac
-}
-
-# Fonction pour compiler le programme C
-preparer_terrain() {
-    # On teste si l'exécutable existe et s'il est exécutable (-x) 
-    if [ ! -x "$EXECUTABLE" ]; then
-        echo "Compilation en cours..."
-        make
-        # On vérifie le code retour de la commande make ($?) [cite: 1470]
-        if [ $? -ne 0 ]; then
-            echo "Erreur : La compilation a échoué."
-            exit 1
-        fi
-    fi
-}
-
-# Fonction pour lancer le programme C
-lancer_calcul() {
-    # Nettoyage de l'ancien fichier de sortie s'il existe (-f)
-    if [ -f "$FICHIER_SORTIE" ]; then
-        rm "$FICHIER_SORTIE"
-    fi
-
-    # Exécution du programme C avec les arguments ($1, $2, $3) 
-    ./"$EXECUTABLE" "$1" "$2" "$3"
-
-    # Vérification du succès du programme C ($?)
+# --- COMPILATION ---
+# On compile seulement si l'exécutable n'existe pas ou si on veut être sûr
+if [ ! -f "$EXECUTABLE" ]; then
+    echo "Compilation en cours..."
+    make
     if [ $? -ne 0 ]; then
-        echo "Erreur lors de l'exécution du programme C."
+        echo "Erreur : La compilation a échoué."
         exit 1
     fi
-}
+fi
 
-# Fonction pour générer les graphiques avec Gnuplot
-creer_visuels() {
-   
-    if [ "$2" = "histo" ]; then
+# --- EXÉCUTION DU C ET GESTION DES FICHIERS ---
+
+# On nettoie l'ancien fichier temporaire s'il existe
+rm -f stats.csv
+
+echo "Traitement des données en cours..."
+./"$EXECUTABLE" "$FICHIER_DAT" "$COMMANDE" "$OPTION"
+
+if [ $? -ne 0 ]; then
+    echo "Erreur lors de l'exécution du programme C."
+    exit 1
+fi
+
+# RENOMMAGE SELON LA CONSIGNE
+# On renomme stats.csv en vol_max.dat, vol_code.dat, etc.
+NOM_FICHIER_SORTIE="vol_${OPTION}.csv"
+mv stats.csv "$NOM_FICHIER_SORTIE"
+
+echo "Fichier de données généré : $NOM_FICHIER_SORTIE"
+
+# --- GNUPLOT (GÉNÉRATION D'UNE SEULE IMAGE) ---
+
+if [ "$COMMANDE" = "histo" ]; then
+    # Tri numérique pour les graphiques (Min et Max)
+    # On trie par la 2ème colonne (valeur)
+    sort -t';' -k2,2n "$NOM_FICHIER_SORTIE" > data_triee.tmp
+
+    # Récupération des 5 premiers (Min) et 5 derniers (Max)
+    head -n 5 data_triee.tmp > data_min.dat
+    tail -n 5 data_triee.tmp > data_max.dat
+
+    echo "Génération du graphique..."
+
+    # Script Gnuplot pour MULTIPLOT (2 graphes en 1 image)
+    gnuplot <<- EOF
+        set terminal png size 800,1000
+        set output 'graph_${OPTION}.png'
+        set datafile separator ";"
         
-        # Vérification que le fichier de stats existe
-        if [ ! -f "$FICHIER_SORTIE" ]; then
-            echo "Erreur : Le fichier de résultats n'a pas été créé."
-            exit 1
-        fi
+        # Configuration pour mettre 2 graphiques l'un sur l'autre
+        set multiplot layout 2,1 title "Statistiques : ${OPTION}" font ",14"
 
-       
-        sort -t';' -k2,2n "$FICHIER_SORTIE" > data_triee.tmp
+        # Graphique 1 : Les 5 Min
+        set title "Top 5 Min"
+        set style data histograms
+        set style fill solid
+        set ylabel "Quantité (m3)"
+        # Rotation des étiquettes en bas pour qu'elles soient lisibles
+        set xtics rotate by -45
+        plot "data_min.dat" using 2:xtic(1) title "Volume" linecolor rgb "blue"
 
-       
-        head -n 5 data_triee.tmp > data_min.dat
-        
-        tail -n 5 data_triee.tmp > data_max.dat
+        # Graphique 2 : Les 5 Max
+        set title "Top 5 Max"
+        set style data histograms
+        set style fill solid
+        set ylabel "Quantité (m3)"
+        set xtics rotate by -45
+        plot "data_max.dat" using 2:xtic(1) title "Volume" linecolor rgb "red"
 
-       
-        gnuplot <<- EOF
-            set terminal png size 1000,600
-            set output 'graph_min.png'
-            set title "Top 5 Min - $3"
-            set style data histograms
-            set style fill solid
-            set datafile separator ";"
-            plot "data_min.dat" using 2:xtic(1) title "Volume"
-
-            set output 'graph_max.png'
-            set title "Top 5 Max - $3"
-            plot "data_max.dat" using 2:xtic(1) title "Volume"
+        unset multiplot
 EOF
-        
-        # Suppression des fichiers temporaires (rm) 
-        rm data_triee.tmp data_min.dat data_max.dat
-    fi
-}
 
-# Fonction pour afficher le temps
-afficher_temps() {
-    FIN=$(date +%s)
+    # Nettoyage temporaire
+    rm data_triee.tmp data_min.dat data_max.dat
     
-    DUREE=$((FIN - DEBUT))
-    echo "Durée totale : $DUREE secondes"
-}
+    echo "Graphique généré : graph_${OPTION}.png"
+fi
 
-# --- EXÉCUTION DU SCRIPT ---
-# Appel des fonctions dans l'ordre
-
-
-verifier_ordres "$@"
-preparer_terrain
-lancer_calcul "$@"
-creer_visuels "$@"
-afficher_temps
+# --- VERIFICATION DU TRI INVERSE (Z -> A) ---
+# Le fichier C a généré un fichier trié inversement par ID.
+# On affiche les 5 premières lignes pour vérifier que ça commence par Z, Y, W...
+echo "--- Vérification du tri inverse (Aperçu du début du fichier) ---"
+head -n 5 "$NOM_FICHIER_SORTIE"
