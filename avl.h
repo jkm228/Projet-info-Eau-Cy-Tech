@@ -5,48 +5,34 @@
 #include <stdlib.h>
 #include <string.h>
 
-// --- STRUCTURES ---
-
-// Structure Station (Nœud AVL)
+// Définition de la structure conforme aux cours (fg/fd)
 typedef struct Station {
-    int id_numerique;
-    char id_str[50];
-    int capacite;
-    long volume_traite;       // long pour éviter l'overflow
-    struct Station *fils_gauche;
-    struct Station *fils_droit;
-    int hauteur;              // Pour l'équilibrage AVL
+    int id;                 // Identifiant numérique
+    char id_str[50];        // Identifiant texte
+    long capacite;          // Capacité (pour le max)
+    long conso;             // Consommation (pour src/real)
+    int h;                  // Hauteur du noeud
+    struct Station *fg;     // Fils gauche
+    struct Station *fd;     // Fils droit
 } Station;
 
-// Structure Connexion (Liste Chaînée pour les fuites)
-typedef struct Connexion {
-    struct Station* station_fils;
-    float pourcentage_fuite;
-    struct Connexion* suivant;
-} Connexion;
+typedef Station* pStation; // Pointeur vers Station (style L2)
 
-// --- PROTOTYPES AVL (Implémentés dans avl.c) ---
-
-// Utilitaires
+// Fonctions de base
 int max(int a, int b);
-int hauteur(Station *N);
-int facteurEquilibre(Station *N);
+int hauteur(pStation a);
+int equilibre(pStation a); // Facteur d'équilibre
 
-// Rotations
-Station* rotationDroite(Station *y);
-Station* rotationGauche(Station *x);
-Station* doubleRotationGaucheDroite(Station *z);
-Station* doubleRotationDroiteGauche(Station *z);
+// Rotations (comme dans Info3_05_AVL_rotations.pdf)
+pStation rotationDroite(pStation y);
+pStation rotationGauche(pStation x);
+pStation doubleRotationGD(pStation a);
+pStation doubleRotationDG(pStation a);
 
-// Gestion Arbre
-Station* creerStation(int id, char* id_str, int capacite);
-Station* insererStation(Station* noeud, int id, char* id_str, int capacite, int volume_ajout);
-
-// --- LA LIGNE CORRIGÉE EST ICI ---
-Station* rechercherStation(Station* racine, int id, char* id_str);
-// --------------------------------
-
-void parcoursInfixe(Station *racine, FILE* flux_sortie);
-void libererAVL(Station* noeud);
+// Fonctions principales
+pStation creerStation(int id, char* code, long cap);
+pStation inserer(pStation a, int id, char* code, long cap, long flux);
+void infixe(pStation a, FILE* fs); // Parcours infixe inverse
+void liberer(pStation a);
 
 #endif
