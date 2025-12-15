@@ -4,34 +4,30 @@
 #include "file.h"
 
 int main(int argc, char** argv) {
-    // Vérification rapide des arguments
     if (argc < 4) {
-        fprintf(stderr, "Usage: %s <fichier> <commande> <option>\n", argv[0]);
+        printf("Usage: %s <fichier> <commande> <mode>\n", argv[0]);
         return 1;
     }
 
-    // 1. Initialisation
-    Station* racine = NULL;
-    char* chemin_entree = argv[1]; // Le fichier .dat
-    char* option = argv[3];        // "max", "min", etc.
+    pStation arbre = NULL;
+    char* fichier_in = argv[1];
+    char* mode = argv[3];
 
-    // 2. Chargement des données (C'est file.c qui fait le travail)
-    chargerDonnees(chemin_entree, &racine, option);
+    // Chargement
+    charger(fichier_in, &arbre, mode);
 
-    // 3. Écriture du fichier de sortie
-    FILE* flux_sortie = fopen("stats.csv", "w");
-    if (flux_sortie == NULL) {
-        perror("Erreur lors de la création de stats.csv");
-        libererAVL(racine);
+    // Ecriture résultats
+    FILE* f_out = fopen("stats.csv", "w");
+    if (f_out == NULL) {
+        liberer(arbre);
         return 1;
     }
 
-    // On écrit l'arbre trié dans le fichier
-    parcoursInfixe(racine, flux_sortie);
+    // Parcours pour remplir le fichier trié
+    infixe(arbre, f_out);
 
-    // 4. Nettoyage et fermeture
-    fclose(flux_sortie);
-    libererAVL(racine);
+    fclose(f_out);
+    liberer(arbre);
 
     return 0;
 }
