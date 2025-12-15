@@ -79,3 +79,5 @@ if [ "$CMD" = "histo" ]; then
 EOF
     
     rm temp_tri.csv min_data.csv max_data.csv
+    echo "Graphique genere : graph_${MODE}.png"
+fi
