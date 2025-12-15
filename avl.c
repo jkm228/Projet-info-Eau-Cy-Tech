@@ -1,5 +1,31 @@
 #include "avl.h"
 
+// --- Fonctions utilitaires internes (remplacent string.h) ---
+
+// Remplace strcmp : renvoie un nb < 0, 0 ou > 0
+int comparerTexte(const char* s1, const char* s2) {
+    int i = 0;
+    while (s1[i] != '\0' && s2[i] != '\0') {
+        if (s1[i] != s2[i]) {
+            return (s1[i] - s2[i]); // Retourne la différence ASCII
+        }
+        i++;
+    }
+    return (s1[i] - s2[i]);
+}
+
+// Remplace strcpy
+void copierTexte(char* dest, const char* src) {
+    int i = 0;
+    while (src[i] != '\0') {
+        dest[i] = src[i];
+        i++;
+    }
+    dest[i] = '\0';
+}
+
+// -----------------------------------------------------------
+
 // Utile pour les hauteurs
 int max(int a, int b) {
     if (a > b) return a;
@@ -70,7 +96,10 @@ pStation creerStation(int id, char* code, long cap) {
         exit(1); // Erreur alloc
     }
     nouv->id = id;
-    strcpy(nouv->id_str, code);
+    
+    // Remplacement de strcpy par notre boucle
+    copierTexte(nouv->id_str, code);
+    
     nouv->capacite = cap;
     nouv->conso = 0;
     nouv->h = 1;
@@ -87,7 +116,8 @@ pStation inserer(pStation a, int id, char* code, long cap, long flux) {
         return nouv;
     }
 
-    int cmp = strcmp(code, a->id_str);
+    // Remplacement de strcmp par notre fonction
+    int cmp = comparerTexte(code, a->id_str);
 
     if (cmp < 0) {
         a->fg = inserer(a->fg, id, code, cap, flux);
@@ -109,19 +139,19 @@ pStation inserer(pStation a, int id, char* code, long cap, long flux) {
     int eq = equilibre(a);
 
     // Cas Gauche-Gauche
-    if (eq > 1 && strcmp(code, a->fg->id_str) < 0) {
+    if (eq > 1 && comparerTexte(code, a->fg->id_str) < 0) {
         return rotationDroite(a);
     }
     // Cas Droite-Droite
-    if (eq < -1 && strcmp(code, a->fd->id_str) > 0) {
+    if (eq < -1 && comparerTexte(code, a->fd->id_str) > 0) {
         return rotationGauche(a);
     }
     // Cas Gauche-Droite
-    if (eq > 1 && strcmp(code, a->fg->id_str) > 0) {
+    if (eq > 1 && comparerTexte(code, a->fg->id_str) > 0) {
         return doubleRotationGD(a);
     }
     // Cas Droite-Gauche
-    if (eq < -1 && strcmp(code, a->fd->id_str) < 0) {
+    if (eq < -1 && comparerTexte(code, a->fd->id_str) < 0) {
         return doubleRotationDG(a);
     }
 
