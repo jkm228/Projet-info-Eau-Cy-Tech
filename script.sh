@@ -50,18 +50,20 @@ if [ "$CMD" = "histo" ]; then
     # Tri numérique
     sort -t';' -k${COL},${COL}n "$OUT" > temp_tri.csv
     
-    # Extraction des 50 extrêmes
+    # --- MODIFICATION ICI : 50 MIN et 10 MAX ---
     head -n 50 temp_tri.csv > min_data.csv
-    tail -n 50 temp_tri.csv > max_data.csv
+    tail -n 10 temp_tri.csv > max_data.csv
 
     gnuplot <<- EOF
+        # On garde une grande largeur pour que les 50 barres du haut soient lisibles
         set terminal png size 1200,1000
         set output 'graph_${MODE}.png'
         set datafile separator ";"
-        set multiplot layout 2,1 title "Graphe : ${MODE} (Top 50)"
+        set multiplot layout 2,1 title "Graphe : ${MODE} (50 Min / 10 Max)"
         
         set bmargin 8
         
+        # Graphique du HAUT : Les 50 plus petits
         set title "Les 50 plus faibles"
         set style data histograms
         set style fill solid
@@ -69,12 +71,15 @@ if [ "$CMD" = "histo" ]; then
         set xtics rotate by -90 font ",8"
         plot "min_data.csv" using ${COL}:xtic(1) title "Volume" lc rgb "blue"
 
-        set title "Les 50 plus forts"
+        # Graphique du BAS : Les 10 plus grands
+        set title "Les 10 plus forts"
         set style data histograms
         set style fill solid
         set ylabel "Quantité (m3)"
+        # On garde la même rotation pour la cohérence
         set xtics rotate by -90 font ",8"
         plot "max_data.csv" using ${COL}:xtic(1) title "Volume" lc rgb "red"
+        
         unset multiplot
 EOF
     
