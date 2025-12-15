@@ -3,7 +3,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
+// On a retiré <string.h> pour faire "maison"
 
 // Définition de la structure conforme aux cours (fg/fd)
 typedef struct Station {
@@ -23,7 +23,7 @@ int max(int a, int b);
 int hauteur(pStation a);
 int equilibre(pStation a); // Facteur d'équilibre
 
-// Rotations (comme dans Info3_05_AVL_rotations.pdf)
+// Rotations
 pStation rotationDroite(pStation y);
 pStation rotationGauche(pStation x);
 pStation doubleRotationGD(pStation a);
