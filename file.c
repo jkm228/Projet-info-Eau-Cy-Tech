@@ -4,77 +4,65 @@
 #include "avl.h"
 #include "file.h"
 
-#define TAILLE_BUFFER 2048
+#define MAX_LIGNE 2048
 
-void chargerDonnees(const char* chemin_fichier, Station** racine, const char* option) {
-    FILE* fichier = fopen(chemin_fichier, "r");
-    if (fichier == NULL) {
-        perror("Erreur ouverture fichier");
+void charger(char* chemin, pStation* racine, char* mode) {
+    FILE* fp = fopen(chemin, "r");
+    if (fp == NULL) {
+        fprintf(stderr, "Erreur : impossible d'ouvrir le fichier %s\n", chemin);
         exit(1);
     }
 
-    char buffer[TAILLE_BUFFER];
-    // On passe l'en-tête
-    fgets(buffer, TAILLE_BUFFER, fichier);
+    char ligne[MAX_LIGNE];
+    // On ignore la première ligne (entête)
+    fgets(ligne, MAX_LIGNE, fp);
 
-    const char* separateurs = ";\r\n";
-
-    while (fgets(buffer, TAILLE_BUFFER, fichier) != NULL) {
-        char col1[50] = "-";
-        char col2[50] = "-";
-        char col3[50] = "-";
-        char col4[50] = "-";
-        char col5[50] = "-"; 
-        char* token;
-
-        // --- LECTURE ROBUSTE DES 5 COLONNES ---
-        token = strtok(buffer, separateurs);
-        if (token) strncpy(col1, token, 49);
-
-        token = strtok(NULL, separateurs);
-        if (token) strncpy(col2, token, 49);
-
-        token = strtok(NULL, separateurs);
-        if (token) strncpy(col3, token, 49);
-
-        token = strtok(NULL, separateurs);
-        if (token) strncpy(col4, token, 49);
+    while (fgets(ligne, MAX_LIGNE, fp) != NULL) {
+        char cols[5][50]; // Tableau pour stocker les 5 colonnes
+        int i = 0;
         
-        token = strtok(NULL, separateurs);
-        if (token) strncpy(col5, token, 49);
+        // Découpage de la ligne avec strtok
+        char* token = strtok(ligne, ";\r\n");
+        while (token != NULL && i < 5) {
+            strncpy(cols[i], token, 49);
+            cols[i][49] = '\0'; // Sécurité
+            token = strtok(NULL, ";\r\n");
+            i++;
+        }
+        
+        // Remplissage des colonnes manquantes si ligne incomplète
+        while (i < 5) {
+            strcpy(cols[i], "-");
+            i++;
+        }
 
-        // --- CONVERSION (Float pour gérer "1.381") ---
-        // On utilise atof pour lire les virgules, puis on convertit en long
-        long val3 = atol(col3); 
-        long val4 = (long)atof(col4); // Capacity (parfois float ?)
-        long val5 = (long)atof(col5); // Débit (souvent float type 1.381)
+        // Conversion des valeurs
+        // Note: atof gère les nombres à virgule (1.381) qu'on caste en long
+        long val3 = atol(cols[2]); 
+        long val4 = (long)atof(cols[3]); 
+        long val5 = (long)atof(cols[4]); 
 
-        // --- LOGIQUE ---
-        if (strcmp(option, "max") == 0) {
-            // Pour MAX, on prend la capacité (souvent Col 4, parfois Col 3)
-            // On ignore le débit actuel (Col 5)
-            long capacite = (val4 > 0) ? val4 : val3;
-            
-            if (capacite > 0) {
-                if (strcmp(col2, "-") != 0 && strcmp(col3, "-") == 0) {
-                    *racine = insererStation(*racine, 0, col2, capacite, 0);
+        // Logique d'insertion selon le mode
+        if (strcmp(mode, "max") == 0) {
+            long cap = (val4 > 0) ? val4 : val3;
+            if (cap > 0) {
+                // Station en col 2 ou 3 ?
+                if (strcmp(cols[1], "-") != 0) {
+                    *racine = inserer(*racine, 0, cols[1], cap, 0);
                 }
-                else if (strcmp(col1, "-") != 0 && strcmp(col2, "-") == 0) {
-                    *racine = insererStation(*racine, 0, col1, capacite, 0);
+                else if (strcmp(cols[0], "-") != 0) {
+                    *racine = inserer(*racine, 0, cols[0], cap, 0);
                 }
             }
         }
-        else if (strcmp(option, "src") == 0 || strcmp(option, "real") == 0) {
-            // Pour SRC/REAL, le débit est en Col 5 (ex: 1.381).
-            // Si Col 5 est vide/nul, on regarde Col 4 par sécurité.
+        else {
+            // Mode src ou real : on regarde le débit (col 5 ou 4)
             long debit = (val5 > 0) ? val5 : val4;
-            
-            // On accumule le débit sur la Destination (Col 3)
-            if (debit > 0 && strcmp(col3, "-") != 0) {
-                *racine = insererStation(*racine, 0, col3, 0, debit);
+            if (debit > 0 && strcmp(cols[2], "-") != 0) {
+                *racine = inserer(*racine, 0, cols[2], 0, debit);
             }
         }
     }
 
-    fclose(fichier);
+    fclose(fp);
 }
