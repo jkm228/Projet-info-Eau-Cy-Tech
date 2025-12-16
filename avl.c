@@ -1,9 +1,9 @@
 #include "avl.h"
 
 // --- Fonctions utilitaires internes (remplacent string.h) ---
-
+int 
 // Remplace strcmp : renvoie un nb < 0, 0 ou > 0
-int comparerTexte(const char* s1, const char* s2) {
+int comparerTexte(char* s1, char* s2) {
     int i = 0;
     while (s1[i] != '\0' && s2[i] != '\0') {
         if (s1[i] != s2[i]) {
@@ -15,7 +15,7 @@ int comparerTexte(const char* s1, const char* s2) {
 }
 
 // Remplace strcpy
-void copierTexte(char* dest, const char* src) {
+void copierTexte(char* dest, char* src) {
     int i = 0;
     while (src[i] != '\0') {
         dest[i] = src[i];
@@ -34,17 +34,21 @@ int max(int a, int b) {
 
 // Récupère la hauteur d'un noeud (gère le cas NULL)
 int hauteur(pStation a) {
-    if (a == NULL) return 0;
+    if (a == NULL){
+        return 0;
+    }
     return a->h;
 }
 
 // Calcul du facteur d'équilibre : h(fg) - h(fd)
 int equilibre(pStation a) {
-    if (a == NULL) return 0;
+    if (a == NULL){
+        return 0;
+    }
     return hauteur(a->fg) - hauteur(a->fd);
 }
 
-// --- Rotations Simples ---
+//Rotations Simples 
 
 pStation rotationDroite(pStation y) {
     pStation x = y->fg;
@@ -116,7 +120,6 @@ pStation inserer(pStation a, int id, char* code, long cap, long flux) {
         return nouv;
     }
 
-    // Remplacement de strcmp par notre fonction
     int cmp = comparerTexte(code, a->id_str);
 
     if (cmp < 0) {
@@ -126,7 +129,6 @@ pStation inserer(pStation a, int id, char* code, long cap, long flux) {
         a->fd = inserer(a->fd, id, code, cap, flux);
     } 
     else {
-        // Le noeud existe déjà : on met à jour les données
         if (cap > 0) a->capacite = cap;
         a->conso += flux;
         return a;
