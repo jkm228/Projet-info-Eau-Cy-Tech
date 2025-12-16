@@ -17,6 +17,7 @@ if [ ! -f "$FICHIER" ]; then
 fi
 
 # COMPILATION
+# On force le nettoyage pour être sûr d'avoir la version avec le avl.c corrigé
 make clean
 make
 
@@ -25,17 +26,18 @@ if [ ! -x c-wire ]; then
     exit 1
 fi
 
-# EXÉCUTION C
+# EXÉCUTION DU PROGRAMME C
 echo "Traitement mode : $MODE"
 ./c-wire "$FICHIER" "$CMD" "$MODE"
 
 if [ ! -s stats.csv ]; then
-    echo "Erreur : stats.csv vide."
+    echo "Erreur : stats.csv est vide."
     exit 1
 fi
 
 # TRI ET FORMATAGE CSV
-# On enlève l'en-tête, on trie par ID décroissant (alphabétique inverse)
+# --- CORRECTION ICI : PLUS DE FILTRE GREP "PLANT" ---
+# On prend tout ce que le C a généré
 head -n 1 stats.csv > header.csv
 tail -n +2 stats.csv | sort -t';' -k1,1r > data_sorted.csv
 cat header.csv data_sorted.csv > "vol_${MODE}.csv"
@@ -44,19 +46,18 @@ echo "Fichier CSV généré : vol_${MODE}.csv"
 
 # GRAPHIQUE
 if [ "$CMD" = "histo" ]; then
-    # Choix colonne : 2 (Capacité) pour max, 3 (Conso) pour real/src
     if [ "$MODE" = "max" ]; then
         COL=2
-        TITRE="Capacite Max"
+        TITRE="Capacité Max"
     else
         COL=3
         TITRE="Volume $MODE"
     fi
 
-    # Préparation données pour Gnuplot (tri numérique pour l'affichage)
+    # Tri numérique pour Gnuplot
     tail -n +2 "vol_${MODE}.csv" | sort -t';' -k${COL},${COL}n > graph_data.csv
     
-    # Min (10 premiers après tri croissant) et Max (10 derniers)
+    # Extraction Min/Max
     head -n 10 graph_data.csv > min_data.csv
     tail -n 10 graph_data.csv > max_data.csv
 
@@ -72,6 +73,7 @@ if [ "$CMD" = "histo" ]; then
         set xtics rotate by -45 font ",8"
 
         set title "Les 10 plus faibles"
+        # Division par 1000000 si besoin, sinon enlever /1000000
         plot "min_data.csv" using ${COL}:xtic(1) notitle lc rgb "blue"
 
         set title "Les 10 plus forts"
