@@ -64,14 +64,14 @@ if [ "$CMD" = "histo" ]; then
         set title "Les 50 plus faibles"
         set style data histograms
         set style fill solid
-        set ylabel "Quantite (m3)"
+        set ylabel "Quantite (M.m3)"
         set xtics rotate by -90 font ",8"
         plot "min_data.csv" using ${COL}:xtic(1) title "Volume" lc rgb "blue"
 
         set title "Les 10 plus forts"
         set style data histograms
         set style fill solid
-        set ylabel "Quantite (m3)"
+        set ylabel "Quantite (M.m3)"
         set xtics rotate by -90 font ",8"
         plot "max_data.csv" using ${COL}:xtic(1) title "Volume" lc rgb "red"
         
