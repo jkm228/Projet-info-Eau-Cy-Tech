@@ -1,5 +1,7 @@
 #include "avl.h"
 
+// --- Fonctions utilitaires "Maison" (Pas de string.h) ---
+
 int comparerTexte(char* s1, char* s2) {
     int i = 0;
     while (s1[i] != '\0' && s2[i] != '\0') {
@@ -20,62 +22,50 @@ void copierTexte(char* dest, char* src) {
     dest[i] = '\0';
 }
 
+// --- Fonctions AVL ---
 
-// Utile pour les hauteurs
 int max(int a, int b) {
     if (a > b) return a;
     return b;
 }
 
-// Récupère la hauteur d'un noeud (gère le cas NULL)
 int hauteur(pStation a) {
-    if (a == NULL){
-        return 0;
-    }
+    if (a == NULL) return 0;
     return a->h;
 }
 
-// Calcul du facteur d'équilibre : h(fg) - h(fd)
 int equilibre(pStation a) {
-    if (a == NULL){
-        return 0;
-    }
+    if (a == NULL) return 0;
     return hauteur(a->fg) - hauteur(a->fd);
 }
 
-//Rotations Simples 
+// --- Rotations ---
 
 pStation rotationDroite(pStation y) {
     pStation x = y->fg;
     pStation T2 = x->fd;
 
-    // Rotation
     x->fd = y;
     y->fg = T2;
 
-    // Mise à jour des hauteurs
     y->h = max(hauteur(y->fg), hauteur(y->fd)) + 1;
     x->h = max(hauteur(x->fg), hauteur(x->fd)) + 1;
 
-    return x; // Nouvelle racine
+    return x;
 }
 
 pStation rotationGauche(pStation x) {
     pStation y = x->fd;
     pStation T2 = y->fg;
 
-    // Rotation
     y->fg = x;
     x->fd = T2;
 
-    // Mise à jour des hauteurs
     x->h = max(hauteur(x->fg), hauteur(x->fd)) + 1;
     y->h = max(hauteur(y->fg), hauteur(y->fd)) + 1;
 
     return y;
 }
-
-// Rotations Doubles
 
 pStation doubleRotationGD(pStation a) {
     a->fg = rotationGauche(a->fg);
@@ -87,18 +77,14 @@ pStation doubleRotationDG(pStation a) {
     return rotationGauche(a);
 }
 
-// Gestion de l'arbre 
+// --- Gestion ---
 
 pStation creerStation(int id, char* code, long cap) {
     pStation nouv = (pStation)malloc(sizeof(Station));
-    if (nouv == NULL) {
-        exit(1); // Erreur alloc
-    }
+    if (nouv == NULL) exit(1);
+    
     nouv->id = id;
-    
-    // Remplacement de strcpy par notre boucle
     copierTexte(nouv->id_str, code);
-    
     nouv->capacite = cap;
     nouv->conso = 0;
     nouv->h = 1;
@@ -108,7 +94,6 @@ pStation creerStation(int id, char* code, long cap) {
 }
 
 pStation inserer(pStation a, int id, char* code, long cap, long flux) {
-    // 1. Insertion ABR classique
     if (a == NULL) {
         pStation nouv = creerStation(id, code, cap);
         nouv->conso = flux;
@@ -124,41 +109,29 @@ pStation inserer(pStation a, int id, char* code, long cap, long flux) {
         a->fd = inserer(a->fd, id, code, cap, flux);
     } 
     else {
-        if (cap > 0) a->capacite = cap;
+        // --- CORRECTION MAJEURE ICI ---
+        // On additionne (+=) au lieu d'écraser (=) pour cumuler les lignes du fichier
+        if (cap > 0) a->capacite += cap; 
+        
         a->conso += flux;
         return a;
     }
 
-    // 2. Mise à jour hauteur
+    // Mise à jour hauteur et équilibrage
     a->h = 1 + max(hauteur(a->fg), hauteur(a->fd));
-
-    // 3. Équilibrage (AVL)
     int eq = equilibre(a);
 
-    // Cas Gauche-Gauche
-    if (eq > 1 && comparerTexte(code, a->fg->id_str) < 0) {
-        return rotationDroite(a);
-    }
-    // Cas Droite-Droite
-    if (eq < -1 && comparerTexte(code, a->fd->id_str) > 0) {
-        return rotationGauche(a);
-    }
-    // Cas Gauche-Droite
-    if (eq > 1 && comparerTexte(code, a->fg->id_str) > 0) {
-        return doubleRotationGD(a);
-    }
-    // Cas Droite-Gauche
-    if (eq < -1 && comparerTexte(code, a->fd->id_str) < 0) {
-        return doubleRotationDG(a);
-    }
+    if (eq > 1 && comparerTexte(code, a->fg->id_str) < 0) return rotationDroite(a);
+    if (eq < -1 && comparerTexte(code, a->fd->id_str) > 0) return rotationGauche(a);
+    if (eq > 1 && comparerTexte(code, a->fg->id_str) > 0) return doubleRotationGD(a);
+    if (eq < -1 && comparerTexte(code, a->fd->id_str) < 0) return doubleRotationDG(a);
 
     return a;
 }
 
-// Parcours infixe inverse (Droit -> Racine -> Gauche) pour tri décroissant
 void infixe(pStation a, FILE* fs) {
     if (a != NULL) {
-        infixe(a->fd, fs);
+        infixe(a->fd, fs); // Parcours Inverse (Décroissant)
         if (fs != NULL) {
             fprintf(fs, "%s;%ld;%ld\n", a->id_str, a->capacite, a->conso);
         }
