@@ -1,7 +1,7 @@
 #include "avl.h"
 
 // --- Fonctions utilitaires internes (remplacent string.h) ---
-int 
+ 
 // Remplace strcmp : renvoie un nb < 0, 0 ou > 0
 int comparerTexte(char* s1, char* s2) {
     int i = 0;
