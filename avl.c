@@ -158,3 +158,13 @@ void liberer(pStation a) {
         free(a);
     }
 }
+
+pStation rechercher(pStation a, char* code) {
+    if (a == NULL) return NULL;
+
+    int cmp = comparerTexte(code, a->id_str);
+
+    if (cmp == 0) return a; // Trouvé !
+    if (cmp < 0) return rechercher(a->fg, code);
+    else return rechercher(a->fd, code);
+}
