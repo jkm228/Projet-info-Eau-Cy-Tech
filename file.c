@@ -5,7 +5,7 @@
 
 #define MAX_LIGNE 2048
 
-// --- FONCTIONS UTILITAIRES (Style Cours - Pas de string.h) ---
+// --- FONCTIONS UTILITAIRES ---
 
 int estEgal(char* s1, char* s2) {
     int i = 0;
@@ -48,26 +48,24 @@ void charger(char* chemin, pStation* racine, char* mode) {
 
     char ligne[MAX_LIGNE];
     
-    // On saute l'en-tête
-    fgets(ligne, MAX_LIGNE, fp);
+    fgets(ligne, MAX_LIGNE, fp); // On saute l'en-tête
 
     while (fgets(ligne, MAX_LIGNE, fp) != NULL) {
         
-        char cols[4][50]; // v0 a 4 colonnes
+        // CORRECTION : On passe à 5 colonnes pour correspondre à ton fichier v0
+        char cols[5][50]; 
         char tampon[50];
         
         int idxLigne = 0;
         int idxCol = 0;
         int idxTampon = 0;
 
-        // Init colonnes
-        for(int k=0; k<4; k++) cols[k][0] = '\0';
+        for(int k=0; k<5; k++) cols[k][0] = '\0';
 
-        // --- PARSING MANUEL ---
-        while (ligne[idxLigne] != '\0' && idxCol < 4) {
+        // --- PARSING MANUEL (idxCol < 5) ---
+        while (ligne[idxLigne] != '\0' && idxCol < 5) {
             char c = ligne[idxLigne];
 
-            // Séparateurs : Point-virgule, Tabulation, Retour ligne
             if (c == ';' || c == '\t' || c == '\n' || c == '\r') {
                 tampon[idxTampon] = '\0';
                 
@@ -84,39 +82,39 @@ void charger(char* chemin, pStation* racine, char* mode) {
             idxLigne++;
         }
 
-        // --- RECUPERATION VALEURS (v0) ---
-        // Col 0: Source ID
-        // Col 1: Dest ID / Usine
-        // Col 2: Capacité (Tuyau) -> Indice 2
-        // Col 3: Consommation (Client) -> Indice 3
+        // --- RECUPERATION VALEURS (Adapté à ton fichier v0 à 5 colonnes) ---
+        // Col 0: Ignoré ou ID global
+        // Col 1: Source / Service
+        // Col 2: Destinataire / Usine / Client
+        // Col 3: Capacité (Indices décalés de +1 par rapport à avant)
+        // Col 4: Consommation
         
-        long valCapacite = chaineVersLong(cols[2]);
-        long valConsommation = chaineVersLong(cols[3]);
+        long valCapacite = chaineVersLong(cols[3]);     // Était cols[2]
+        long valConsommation = chaineVersLong(cols[4]); // Était cols[3]
 
         // --- LOGIQUE DISTINCTE ---
 
-        // MODE MAX : Capacité des Usines
+        // MODE MAX : Capacité
         if (estEgal(mode, "max")) {
-            if (valCapacite > 0 && valConsommation == 0) {
-                // cols[1] est l'usine concernée
-                *racine = inserer(*racine, 0, cols[1], valCapacite, 0);
+            if (valCapacite > 0) {
+                // La station concernée est en Col 2 (ex: Plant #JA...)
+                *racine = inserer(*racine, 0, cols[2], valCapacite, 0);
             }
         }
 
-        // MODE SRC : Volume Capté par les Usines
+        // MODE SRC : Volume Capté
         else if (estEgal(mode, "src")) {
-            if (valCapacite > 0 && valConsommation == 0) {
-                // IMPORTANT : On insère l'USINE (cols[1]) qui reçoit l'eau
-                // pour que le filtre "Plant" du script shell fonctionne.
-                *racine = inserer(*racine, 0, cols[1], 0, valCapacite);
+            if (valCapacite > 0) {
+                // On garde Col 2 (Usine qui reçoit) pour que le grep "Plant" fonctionne
+                *racine = inserer(*racine, 0, cols[2], 0, valCapacite);
             }
         }
 
         // MODE REAL : Volume Traité (Consommation Client)
         else if (estEgal(mode, "real") || estEgal(mode, "lv")) {
             if (valConsommation > 0) {
-                // On attribue la conso à l'usine qui dessert (cols[0])
-                *racine = inserer(*racine, 0, cols[0], 0, valConsommation);
+                // Le client est en Col 2, mais c'est la station en Col 1 (Service) qui fournit
+                *racine = inserer(*racine, 0, cols[1], 0, valConsommation);
             }
         }
     }
