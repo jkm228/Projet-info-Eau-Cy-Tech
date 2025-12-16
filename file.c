@@ -7,7 +7,6 @@
 
 // --- FONCTIONS UTILITAIRES (Style Cours - Pas de string.h) ---
 
-// Compare deux chaînes
 int estEgal(char* s1, char* s2) {
     int i = 0;
     while (s1[i] != '\0' && s2[i] != '\0') {
@@ -17,7 +16,6 @@ int estEgal(char* s1, char* s2) {
     return (s1[i] == '\0' && s2[i] == '\0');
 }
 
-// Copie src dans dest
 void copierChaine(char* dest, const char* src) {
     int i = 0;
     while (src[i] != '\0') {
@@ -27,7 +25,6 @@ void copierChaine(char* dest, const char* src) {
     dest[i] = '\0';
 }
 
-// Convertit chaine en long (gère "-" et vide)
 long chaineVersLong(char* s) {
     long res = 0;
     int i = 0;
@@ -89,7 +86,7 @@ void charger(char* chemin, pStation* racine, char* mode) {
 
         // --- RECUPERATION VALEURS (v0) ---
         // Col 0: Source ID
-        // Col 1: Dest ID
+        // Col 1: Dest ID / Usine
         // Col 2: Capacité (Tuyau) -> Indice 2
         // Col 3: Consommation (Client) -> Indice 3
         
@@ -98,29 +95,27 @@ void charger(char* chemin, pStation* racine, char* mode) {
 
         // --- LOGIQUE DISTINCTE ---
 
-        // MODE MAX : On regarde la capacité des STATIONS (pas des clients)
+        // MODE MAX : Capacité des Usines
         if (estEgal(mode, "max")) {
-            // C'est une station si elle a une capacité de transfert mais ne consomme pas
             if (valCapacite > 0 && valConsommation == 0) {
-                // On attribue la capacité à la station destinataire (cols[1])
-                // ou source selon l'interprétation, mais cols[1] est standard pour "capacité de l'usine"
+                // cols[1] est l'usine concernée
                 *racine = inserer(*racine, 0, cols[1], valCapacite, 0);
             }
         }
-// MODE SRC : Volume Capté (Flux entre stations)
+
+        // MODE SRC : Volume Capté par les Usines
         else if (estEgal(mode, "src")) {
-            // C'est un flux inter-station (Tuyau)
             if (valCapacite > 0 && valConsommation == 0) {
-                // CORRECTION : On prend cols[1] (Destinataire/Usine) pour que le grep "Plant" fonctionne
+                // IMPORTANT : On insère l'USINE (cols[1]) qui reçoit l'eau
+                // pour que le filtre "Plant" du script shell fonctionne.
                 *racine = inserer(*racine, 0, cols[1], 0, valCapacite);
             }
         }
 
         // MODE REAL : Volume Traité (Consommation Client)
         else if (estEgal(mode, "real") || estEgal(mode, "lv")) {
-            // C'est un client final
             if (valConsommation > 0) {
-                // On somme ce que la station (cols[0]) doit fournir au client
+                // On attribue la conso à l'usine qui dessert (cols[0])
                 *racine = inserer(*racine, 0, cols[0], 0, valConsommation);
             }
         }
