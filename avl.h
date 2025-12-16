@@ -35,4 +35,5 @@ pStation inserer(pStation a, char* code, double cap, double flux);
 void infixe(pStation a, FILE* fs); 
 void liberer(pStation a);
 
+pStation rechercher(pStation a, char* code);
 #endif
