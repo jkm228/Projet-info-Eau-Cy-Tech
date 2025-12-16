@@ -52,7 +52,6 @@ void charger(char* chemin, pStation* racine, char* mode) {
 
     while (fgets(ligne, MAX_LIGNE, fp) != NULL) {
         
-        // CORRECTION : On passe à 5 colonnes pour correspondre à ton fichier v0
         char cols[5][50]; 
         char tampon[50];
         
@@ -62,16 +61,14 @@ void charger(char* chemin, pStation* racine, char* mode) {
 
         for(int k=0; k<5; k++) cols[k][0] = '\0';
 
-        // --- PARSING MANUEL (idxCol < 5) ---
+        // --- PARSING MANUEL (5 colonnes) ---
         while (ligne[idxLigne] != '\0' && idxCol < 5) {
             char c = ligne[idxLigne];
 
             if (c == ';' || c == '\t' || c == '\n' || c == '\r') {
                 tampon[idxTampon] = '\0';
-                
                 if (idxTampon == 0) copierChaine(cols[idxCol], "-");
                 else copierChaine(cols[idxCol], tampon);
-
                 idxCol++;
                 idxTampon = 0;
             } 
@@ -82,39 +79,33 @@ void charger(char* chemin, pStation* racine, char* mode) {
             idxLigne++;
         }
 
-        // --- RECUPERATION VALEURS (Adapté à ton fichier v0 à 5 colonnes) ---
-        // Col 0: Ignoré ou ID global
-        // Col 1: Source / Service
-        // Col 2: Destinataire / Usine / Client
-        // Col 3: Capacité (Indices décalés de +1 par rapport à avant)
-        // Col 4: Consommation
+        // --- LOGIQUE HYBRIDE (C'est ici que tout se joue) ---
+
+        // Cas 1 : Ligne commençant par "-" => C'est un TUYAU (Source -> Usine)
+        // Structure : - ; Source ; Usine(Dest) ; Capacité ; ...
+        if (estEgal(cols[0], "-")) {
+            long valCapacite = chaineVersLong(cols[3]); // Col 4
+            
+            // MODE MAX et SRC utilisent ces lignes
+            if (valCapacite > 0) {
+                if (estEgal(mode, "max") || estEgal(mode, "src")) {
+                    // On insère l'Usine Destinataire (cols[2])
+                    *racine = inserer(*racine, 0, cols[2], valCapacite, 0);
+                }
+            }
+        }
         
-        long valCapacite = chaineVersLong(cols[3]);     // Était cols[2]
-        long valConsommation = chaineVersLong(cols[4]); // Était cols[3]
+        // Cas 2 : Ligne ne commençant PAS par "-" => C'est un CLIENT (Usine -> Client)
+        // Structure : Usine(Source) ; Service ; Client ; - ; Consommation
+        else {
+            long valConso = chaineVersLong(cols[4]); // Col 5
 
-        // --- LOGIQUE DISTINCTE ---
-
-        // MODE MAX : Capacité
-        if (estEgal(mode, "max")) {
-            if (valCapacite > 0) {
-                // La station concernée est en Col 2 (ex: Plant #JA...)
-                *racine = inserer(*racine, 0, cols[2], valCapacite, 0);
-            }
-        }
-
-        // MODE SRC : Volume Capté
-        else if (estEgal(mode, "src")) {
-            if (valCapacite > 0) {
-                // On garde Col 2 (Usine qui reçoit) pour que le grep "Plant" fonctionne
-                *racine = inserer(*racine, 0, cols[2], 0, valCapacite);
-            }
-        }
-
-        // MODE REAL : Volume Traité (Consommation Client)
-        else if (estEgal(mode, "real") || estEgal(mode, "lv")) {
-            if (valConsommation > 0) {
-                // Le client est en Col 2, mais c'est la station en Col 1 (Service) qui fournit
-                *racine = inserer(*racine, 0, cols[1], 0, valConsommation);
+            // MODE REAL utilise ces lignes
+            if (valConso > 0) {
+                if (estEgal(mode, "real") || estEgal(mode, "lv")) {
+                    // On insère l'Usine Fournisseur (cols[0])
+                    *racine = inserer(*racine, 0, cols[0], 0, valConso);
+                }
             }
         }
     }
