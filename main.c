@@ -3,51 +3,61 @@
 #include "avl.h"
 #include "file.h"
 
-int main(int argc, char** argv) {
-    // Usage 1 : ./c-wire <fichier_tmp> (Mode Histo - Affiche tout)
-    // Usage 2 : ./c-wire <fichier_tmp> <Station_ID> (Mode Leaks - Cherche ID)
+// Fonction récursive de parcours du réseau (Arbre N-aire)
+double calculerFuitesAval(pStation s) {
+    if (s == NULL) return 0;
     
-    if (argc < 2) {
-        return 1;
+    double fuites_ici = 0;
+    Tuyau* t = s->liste_aval;
+    
+    while (t != NULL) {
+        // Le volume qui passe dans ce tuyau est le volume présent dans la station *source
+        // (Simplification : on suppose que s->conso contient le volume d'eau qui traverse s)
+        
+        // Calcul fuite sur ce tronçon
+        double perte = s->conso * (t->fuite_percent / 100.0);
+        
+        // On propage l'eau restante à l'enfant
+        t->destinataire->conso += (s->conso - perte);
+        
+        // La fuite totale = fuite ce tuyau + fuites en aval
+        fuites_ici += perte + calculerFuitesAval(t->destinataire);
+        
+        t = t->suivant;
     }
+    return fuites_ici;
+}
+
+int main(int argc, char** argv) {
+    if (argc < 2) return 1;
 
     pStation arbre = NULL;
     char* fichier_in = argv[1];
-    char* target_id = NULL;
+    char* target_id = (argc >= 3) ? argv[2] : NULL;
 
-    if (argc >= 3) {
-        target_id = argv[2]; // On cherche cet ID spécifique
-    }
-
-    // 1. Chargement
+    // Chargement (Le file.c doit gérer le format 4 colonnes si mode leaks)
     charger(fichier_in, &arbre);
 
-    // 2. Ecriture résultats
     FILE* f_out = fopen("stats.csv", "w");
-    if (f_out == NULL) {
-        liberer(arbre);
-        return 1;
-    }
+    if (f_out == NULL) { liberer(arbre); return 1; }
 
     if (target_id != NULL) {
         // --- MODE LEAKS ---
         pStation s = rechercher(arbre, target_id);
         if (s != NULL) {
-            // Trouvé : On affiche la consommation (utilisée pour stocker les fuites)
-            fprintf(f_out, "%s;%.6f\n", s->id_str, s->conso);
+            // On lance le calcul récursif sur le réseau aval
+            double total_fuites = calculerFuitesAval(s);
+            fprintf(f_out, "%s;%.6f\n", target_id, total_fuites);
         } else {
-            // Pas trouvé : Consigne = afficher ID avec volume -1
             fprintf(f_out, "%s;-1\n", target_id);
         }
     } else {
         // --- MODE HISTO ---
-        // En-tête générique pour que le Shell puisse trier
         fprintf(f_out, "Station;Capacite;Consommation\n");
         infixe(arbre, f_out);
     }
 
     fclose(f_out);
     liberer(arbre);
-
     return 0;
 }
