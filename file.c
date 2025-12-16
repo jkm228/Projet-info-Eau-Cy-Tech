@@ -107,12 +107,11 @@ void charger(char* chemin, pStation* racine, char* mode) {
                 *racine = inserer(*racine, 0, cols[1], valCapacite, 0);
             }
         }
-// MODE SRC : Volume Capté (Flux entrant dans l'usine)
+// MODE SRC : Volume Capté (Flux entre stations)
         else if (estEgal(mode, "src")) {
             // C'est un flux inter-station (Tuyau)
             if (valCapacite > 0 && valConsommation == 0) {
-                // CORRECTION ICI : On attribue le volume à l'usine qui REÇOIT l'eau (cols[1])
-                // et non à la source qui l'envoie (cols[0]).
+                // CORRECTION : On prend cols[1] (Destinataire/Usine) pour que le grep "Plant" fonctionne
                 *racine = inserer(*racine, 0, cols[1], 0, valCapacite);
             }
         }
