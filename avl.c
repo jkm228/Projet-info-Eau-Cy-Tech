@@ -38,21 +38,40 @@ int equilibre(pStation a) {
     return hauteur(a->fg) - hauteur(a->fd);
 }
 
-// --- Création et Insertion ---
+// --- Création, Insertion et Connexion ---
 
 pStation creerStation(char* code, double cap) {
     pStation nouv = (pStation)malloc(sizeof(Station));
     if (nouv == NULL) {
-        printf("Erreur d'allocation mémoire\n");
+        fprintf(stderr, "Erreur d'allocation mémoire\n");
         exit(1);
     }
     copierTexte(nouv->id_str, code);
     nouv->capacite = cap;
     nouv->conso = 0;
+    nouv->liste_aval = NULL; // Initialisation de la liste chaînée
     nouv->h = 1;
     nouv->fg = NULL;
     nouv->fd = NULL;
     return nouv;
+}
+
+// Ajoute un tuyau dans la liste chaînée du parent vers l'enfant
+void ajouterConnexion(pStation parent, pStation enfant, double fuite) {
+    if (parent == NULL || enfant == NULL) return;
+
+    Tuyau* nouv = (Tuyau*)malloc(sizeof(Tuyau));
+    if (nouv == NULL) {
+        fprintf(stderr, "Erreur d'allocation tuyau\n");
+        exit(1);
+    }
+    
+    nouv->destinataire = enfant;
+    nouv->fuite_percent = fuite;
+    
+    // Insertion en tête de liste (O(1))
+    nouv->suivant = parent->liste_aval;
+    parent->liste_aval = nouv;
 }
 
 pStation inserer(pStation a, char* code, double cap, double flux) {
@@ -71,9 +90,8 @@ pStation inserer(pStation a, char* code, double cap, double flux) {
         a->fd = inserer(a->fd, code, cap, flux);
     } 
     else {
-        // La station existe déjà : on CUMULE les données
-        // C'est ici que la magie opère pour regrouper les tuyaux
-        a->capacite += cap;
+        // La station existe déjà : on cumule les données (pour l'histo)
+        if (cap > 0) a->capacite += cap;
         a->conso += flux;
         return a;
     }
@@ -82,23 +100,29 @@ pStation inserer(pStation a, char* code, double cap, double flux) {
     a->h = 1 + max(hauteur(a->fg), hauteur(a->fd));
     int eq = equilibre(a);
 
-    // Cas Gauche-Gauche
     if (eq > 1 && comparerTexte(code, a->fg->id_str) < 0) 
         return rotationDroite(a);
 
-    // Cas Droite-Droite
     if (eq < -1 && comparerTexte(code, a->fd->id_str) > 0) 
         return rotationGauche(a);
 
-    // Cas Gauche-Droite
     if (eq > 1 && comparerTexte(code, a->fg->id_str) > 0) 
         return doubleRotationGD(a);
 
-    // Cas Droite-Gauche
     if (eq < -1 && comparerTexte(code, a->fd->id_str) < 0) 
         return doubleRotationDG(a);
 
     return a;
+}
+
+pStation rechercher(pStation a, char* code) {
+    if (a == NULL) return NULL;
+
+    int cmp = comparerTexte(code, a->id_str);
+
+    if (cmp == 0) return a;
+    if (cmp < 0) return rechercher(a->fg, code);
+    else return rechercher(a->fd, code);
 }
 
 // --- Rotations ---
@@ -145,7 +169,6 @@ void infixe(pStation a, FILE* fs) {
     if (a != NULL) {
         infixe(a->fg, fs);
         // Format de sortie : ID;CAPACITE;CONSO
-        // %.3f pour garder la précision du fichier .dat sans abuser
         fprintf(fs, "%s;%.6f;%.6f\n", a->id_str, a->capacite, a->conso);
         infixe(a->fd, fs);
     }
@@ -155,16 +178,15 @@ void liberer(pStation a) {
     if (a != NULL) {
         liberer(a->fg);
         liberer(a->fd);
+        
+        // Libération de la liste chaînée des tuyaux
+        Tuyau* t = a->liste_aval;
+        while (t != NULL) {
+            Tuyau* tmp = t;
+            t = t->suivant;
+            free(tmp);
+        }
+        
         free(a);
     }
-}
-
-pStation rechercher(pStation a, char* code) {
-    if (a == NULL) return NULL;
-
-    int cmp = comparerTexte(code, a->id_str);
-
-    if (cmp == 0) return a; // Trouvé !
-    if (cmp < 0) return rechercher(a->fg, code);
-    else return rechercher(a->fd, code);
 }
