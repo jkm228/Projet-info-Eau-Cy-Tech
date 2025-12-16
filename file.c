@@ -107,13 +107,13 @@ void charger(char* chemin, pStation* racine, char* mode) {
                 *racine = inserer(*racine, 0, cols[1], valCapacite, 0);
             }
         }
-
-        // MODE SRC : Volume Capté (Flux entre stations)
+// MODE SRC : Volume Capté (Flux entrant dans l'usine)
         else if (estEgal(mode, "src")) {
             // C'est un flux inter-station (Tuyau)
             if (valCapacite > 0 && valConsommation == 0) {
-                // On somme ce qui part de la source (cols[0])
-                *racine = inserer(*racine, 0, cols[0], 0, valCapacite);
+                // CORRECTION ICI : On attribue le volume à l'usine qui REÇOIT l'eau (cols[1])
+                // et non à la source qui l'envoie (cols[0]).
+                *racine = inserer(*racine, 0, cols[1], 0, valCapacite);
             }
         }
 
