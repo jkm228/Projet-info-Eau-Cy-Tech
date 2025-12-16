@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h> // Nécessaire pour strstr
 #include "avl.h"
 #include "file.h"
 
@@ -40,6 +41,21 @@ long chaineVersLong(char* s) {
         i++;
     }
     return res;
+}
+
+// Fonction pour deviner si l'ID est un Client (Entreprise/Individu) ou une Station
+// Les Stations contiennent généralement "HVB", "HVA", "LV" ou sont vides
+int estClient(char* id) {
+    // Si l'ID contient ces mots-clés, c'est une Station ou une Source (PAS un client)
+    if (strstr(id, "HVB") != NULL || strstr(id, "HVA") != NULL || strstr(id, "Source") != NULL) {
+        return 0; 
+    }
+    // Idem pour LV si tes stations s'appellent LV
+    if (strstr(id, "LV") != NULL) {
+        return 0;
+    }
+    // Si ce n'est pas une station, on considère que c'est un client (Comp, Indiv, etc.)
+    return 1;
 }
 
 void charger(char* chemin, pStation* racine, char* mode) {
@@ -88,13 +104,14 @@ void charger(char* chemin, pStation* racine, char* mode) {
         }
         
         // --- Récupération des valeurs ---
-        // Col 3 (Index 2) : Identifiant Station
-        // Col 4 (Index 3) : Capacité ou Volume Transporté (Input)
-        // Col 5 (Index 4) : Consommation (Output)
+        // Cols[1] : ID du partenaire (Source, Autre Station ou Client)
+        // Cols[2] : ID de la Station concernée (celle qu'on veut grapher)
+        // Cols[3] : Volume 1 (Souvent Capacité ou Flux Principal)
+        // Cols[4] : Volume 2 (Souvent Consommation Individuelle)
         
-        long val3 = chaineVersLong(cols[2]); // Souvent ID ou Capacité
-        long val4 = chaineVersLong(cols[3]); // Volume 1 (Transport/Capacité)
-        long val5 = chaineVersLong(cols[4]); // Volume 2 (Consommation)
+        long val3 = chaineVersLong(cols[2]); 
+        long val4 = chaineVersLong(cols[3]); 
+        long val5 = chaineVersLong(cols[4]); 
 
         // --- Logique d'insertion ---
 
@@ -116,23 +133,27 @@ void charger(char* chemin, pStation* racine, char* mode) {
         // 2. MODES SRC et REAL (Consommation / Flux)
         else {
             long debit = 0;
+            // On prend la valeur disponible (val4 prioritaire car souvent plus complète)
+            long valeurLigne = (val4 > 0) ? val4 : val5;
+
+            // ANALYSE DU TYPE DE PARTENAIRE (Cols[1])
+            int partenaireEstClient = estClient(cols[1]);
 
             if (estEgal(mode, "real") || estEgal(mode, "lv")) {
-                // MODE REAL : On ne regarde QUE la consommation finale (Col 5)
-                // On ignore la Col 4 car elle contient les fuites potentielles en amont
-                debit = val5;
+                // MODE REAL : On ne veut que les CONSOMMATEURS
+                if (partenaireEstClient == 1) {
+                    debit = valeurLigne;
+                }
             }
             else if (estEgal(mode, "src")) {
-                // MODE SRC : On veut le volume TOTAL (incluant fuites)
-                // On priorise la Col 4 (Volume entrant/transporté) qui est > Col 5
-                if (val4 > 0) {
-                    debit = val4;
-                } else {
-                    debit = val5;
+                // MODE SRC : On veut les SOURCES et AUTRES STATIONS (Flux Entrant)
+                // Donc on prend tout ce qui N'EST PAS un client final
+                if (partenaireEstClient == 0) {
+                    debit = valeurLigne;
                 }
             }
 
-            // Insertion dans l'arbre (sur l'ID de la station en Col 3 usually)
+            // Insertion (uniquement si on a trouvé un débit pertinent)
             if (debit > 0 && estEgal(cols[2], "-") == 0) {
                 *racine = inserer(*racine, 0, cols[2], 0, debit);
             }
