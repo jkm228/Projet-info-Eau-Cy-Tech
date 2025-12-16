@@ -19,32 +19,28 @@ int estEgal(char* s1, char* s2) {
     return 0;
 }
 
-
 void copierChaine(char* dest, const char* src) {
     int i = 0;
     while (src[i] != '\0') {
         dest[i] = src[i];
         i++;
     }
-    dest[i] = '\0'; // Ne pas oublier le caractère de fin
+    dest[i] = '\0';
 }
-
 
 long chaineVersLong(char* s) {
     long res = 0;
     int i = 0;
     
-    // Gestion du cas vide ou tiret
     if (s[0] == '\0' || s[0] == '-'){
         return 0;
     }
     while (s[i] >= '0' && s[i] <= '9') {
-        res = res * 10 + (s[i] - '0'); // Conversion ASCII vers entier
+        res = res * 10 + (s[i] - '0');
         i++;
     }
     return res;
 }
-
 
 void charger(char* chemin, pStation* racine, char* mode) {
     FILE* fp = fopen(chemin, "r");
@@ -55,79 +51,88 @@ void charger(char* chemin, pStation* racine, char* mode) {
 
     char ligne[MAX_LIGNE];
     
+    // On ignore l'en-tête
     fgets(ligne, MAX_LIGNE, fp);
 
-    
     while (fgets(ligne, MAX_LIGNE, fp) != NULL) {
         
-        char cols[5][50]; // Tableau pour stocker les 5 colonnes
-        char tampon[50];  // Tampon temporaire pour lire un mot
+        char cols[5][50]; 
+        char tampon[50];  
         
-        int idxLigne = 0; // Position dans la ligne brute
-        int idxCol = 0;   // Quelle colonne on remplit (0 à 4)
-        int idxTampon = 0;// Position dans le mot en cours
+        int idxLigne = 0; 
+        int idxCol = 0;   
+        int idxTampon = 0;
 
-        // Initialisation des colonnes à vide par sécurité
         for(int k=0; k<5; k++) cols[k][0] = '\0';
 
-        // On parcourt la ligne caractère par caractère
         while (ligne[idxLigne] != '\0' && idxCol < 5) {
             char c = ligne[idxLigne];
 
-            // Si on tombe sur un séparateur ou la fin de ligne
             if (c == ';' || c == '\n' || c == '\r') {
-                tampon[idxTampon] = '\0'; // Finir la chaine
+                tampon[idxTampon] = '\0';
                 
-                // Si le tampon est vide, on met un tiret "-" pour dire "rien"
                 if (idxTampon == 0) {
                     copierChaine(cols[idxCol], "-");
                 } else {
                     copierChaine(cols[idxCol], tampon);
                 }
 
-                idxCol++;      // On passe à la colonne suivante
-                idxTampon = 0; // On vide le tampon
+                idxCol++;
+                idxTampon = 0;
             } 
             else {
-                // Sinon, on ajoute le caractère au mot en cours
                 tampon[idxTampon] = c;
                 idxTampon++;
             }
             idxLigne++;
         }
-        // ----------------------------------------
+        
+        // --- Récupération des valeurs ---
+        // Col 3 (Index 2) : Identifiant Station
+        // Col 4 (Index 3) : Capacité ou Volume Transporté (Input)
+        // Col 5 (Index 4) : Consommation (Output)
+        
+        long val3 = chaineVersLong(cols[2]); // Souvent ID ou Capacité
+        long val4 = chaineVersLong(cols[3]); // Volume 1 (Transport/Capacité)
+        long val5 = chaineVersLong(cols[4]); // Volume 2 (Consommation)
 
-        // Conversion des valeurs numériques avec notre fonction
-        long val3 = chaineVersLong(cols[2]);
-        long val4 = chaineVersLong(cols[3]);
-        long val5 = chaineVersLong(cols[4]);
+        // --- Logique d'insertion ---
 
-        // Logique d'insertion (identique à avant, mais avec estEgal)
+        // 1. MODE MAX (Capacité)
         if (estEgal(mode, "max")) {
-            // On cherche la capacité (col 3 ou 4)
             long cap = 0;
             if (val4 > 0) cap = val4;
             else cap = val3;
 
             if (cap > 0) {
-                // Est-ce une station normale ou HVA ?
-                if (estEgal(cols[1], "-") == 0) { // Si col 1 n'est pas vide
+                if (estEgal(cols[1], "-") == 0) { 
                     *racine = inserer(*racine, 0, cols[1], cap, 0);
                 }
-                else if (estEgal(cols[0], "-") == 0) { // Si col 0 n'est pas vide
+                else if (estEgal(cols[0], "-") == 0) { 
                     *racine = inserer(*racine, 0, cols[0], cap, 0);
                 }
             }
         }
+        // 2. MODES SRC et REAL (Consommation / Flux)
         else {
-            // Mode src ou real (consommation)
             long debit = 0;
-            if (val5 > 0){
+
+            if (estEgal(mode, "real") || estEgal(mode, "lv")) {
+                // MODE REAL : On ne regarde QUE la consommation finale (Col 5)
+                // On ignore la Col 4 car elle contient les fuites potentielles en amont
                 debit = val5;
             }
-            else{
-                debit = val4;
+            else if (estEgal(mode, "src")) {
+                // MODE SRC : On veut le volume TOTAL (incluant fuites)
+                // On priorise la Col 4 (Volume entrant/transporté) qui est > Col 5
+                if (val4 > 0) {
+                    debit = val4;
+                } else {
+                    debit = val5;
+                }
             }
+
+            // Insertion dans l'arbre (sur l'ID de la station en Col 3 usually)
             if (debit > 0 && estEgal(cols[2], "-") == 0) {
                 *racine = inserer(*racine, 0, cols[2], 0, debit);
             }
