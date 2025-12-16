@@ -4,37 +4,49 @@
 #include "file.h"
 
 int main(int argc, char** argv) {
-    // Le programme C attend maintenant exactement 1 argument utile : le fichier d'entrée
-    // Usage interne : ./c-wire <fichier_tmp>
+    // Usage 1 : ./c-wire <fichier_tmp> (Mode Histo - Affiche tout)
+    // Usage 2 : ./c-wire <fichier_tmp> <Station_ID> (Mode Leaks - Cherche ID)
     
     if (argc < 2) {
-        printf("Usage interne: %s <fichier_tmp>\n", argv[0]);
         return 1;
     }
 
     pStation arbre = NULL;
     char* fichier_in = argv[1];
+    char* target_id = NULL;
 
-    // 1. Chargement des données (lecture du fichier temporaire)
+    if (argc >= 3) {
+        target_id = argv[2]; // On cherche cet ID spécifique
+    }
+
+    // 1. Chargement
     charger(fichier_in, &arbre);
 
-    // 2. Ecriture des résultats
+    // 2. Ecriture résultats
     FILE* f_out = fopen("stats.csv", "w");
     if (f_out == NULL) {
-        fprintf(stderr, "Erreur d'écriture stats.csv\n");
         liberer(arbre);
         return 1;
     }
 
-    // En-tête du CSV (optionnel mais propre)
-    fprintf(f_out, "Station;Capacite;Consommation\n");
-    
-    // Parcours infixe (Tri alphabétique par ID)
-    infixe(arbre, f_out);
+    if (target_id != NULL) {
+        // --- MODE LEAKS ---
+        pStation s = rechercher(arbre, target_id);
+        if (s != NULL) {
+            // Trouvé : On affiche la consommation (utilisée pour stocker les fuites)
+            fprintf(f_out, "%s;%.6f\n", s->id_str, s->conso);
+        } else {
+            // Pas trouvé : Consigne = afficher ID avec volume -1
+            fprintf(f_out, "%s;-1\n", target_id);
+        }
+    } else {
+        // --- MODE HISTO ---
+        // En-tête générique pour que le Shell puisse trier
+        fprintf(f_out, "Station;Capacite;Consommation\n");
+        infixe(arbre, f_out);
+    }
 
     fclose(f_out);
-    
-    // 3. Libération de la mémoire
     liberer(arbre);
 
     return 0;
