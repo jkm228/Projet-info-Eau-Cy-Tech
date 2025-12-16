@@ -1,12 +1,12 @@
 #include "avl.h"
 
-// --- Fonctions utilitaires "Maison" (Pas de string.h) ---
+// --- Fonctions utilitaires (Pas de string.h) ---
 
 int comparerTexte(char* s1, char* s2) {
     int i = 0;
     while (s1[i] != '\0' && s2[i] != '\0') {
         if (s1[i] != s2[i]) {
-            return (s1[i] - s2[i]); // Retourne la différence ASCII
+            return (s1[i] - s2[i]);
         }
         i++;
     }
@@ -25,8 +25,7 @@ void copierTexte(char* dest, char* src) {
 // --- Fonctions AVL ---
 
 int max(int a, int b) {
-    if (a > b) return a;
-    return b;
+    return (a > b) ? a : b;
 }
 
 int hauteur(pStation a) {
@@ -37,6 +36,69 @@ int hauteur(pStation a) {
 int equilibre(pStation a) {
     if (a == NULL) return 0;
     return hauteur(a->fg) - hauteur(a->fd);
+}
+
+// --- Création et Insertion ---
+
+pStation creerStation(char* code, double cap) {
+    pStation nouv = (pStation)malloc(sizeof(Station));
+    if (nouv == NULL) {
+        printf("Erreur d'allocation mémoire\n");
+        exit(1);
+    }
+    copierTexte(nouv->id_str, code);
+    nouv->capacite = cap;
+    nouv->conso = 0;
+    nouv->h = 1;
+    nouv->fg = NULL;
+    nouv->fd = NULL;
+    return nouv;
+}
+
+pStation inserer(pStation a, char* code, double cap, double flux) {
+    if (a == NULL) {
+        pStation nouv = creerStation(code, cap);
+        nouv->conso = flux;
+        return nouv;
+    }
+
+    int cmp = comparerTexte(code, a->id_str);
+
+    if (cmp < 0) {
+        a->fg = inserer(a->fg, code, cap, flux);
+    } 
+    else if (cmp > 0) {
+        a->fd = inserer(a->fd, code, cap, flux);
+    } 
+    else {
+        // La station existe déjà : on CUMULE les données
+        // C'est ici que la magie opère pour regrouper les tuyaux
+        a->capacite += cap;
+        a->conso += flux;
+        return a;
+    }
+
+    // Rééquilibrage AVL
+    a->h = 1 + max(hauteur(a->fg), hauteur(a->fd));
+    int eq = equilibre(a);
+
+    // Cas Gauche-Gauche
+    if (eq > 1 && comparerTexte(code, a->fg->id_str) < 0) 
+        return rotationDroite(a);
+
+    // Cas Droite-Droite
+    if (eq < -1 && comparerTexte(code, a->fd->id_str) > 0) 
+        return rotationGauche(a);
+
+    // Cas Gauche-Droite
+    if (eq > 1 && comparerTexte(code, a->fg->id_str) > 0) 
+        return doubleRotationGD(a);
+
+    // Cas Droite-Gauche
+    if (eq < -1 && comparerTexte(code, a->fd->id_str) < 0) 
+        return doubleRotationDG(a);
+
+    return a;
 }
 
 // --- Rotations ---
@@ -77,65 +139,15 @@ pStation doubleRotationDG(pStation a) {
     return rotationGauche(a);
 }
 
-// --- Gestion ---
-
-pStation creerStation(int id, char* code, long cap) {
-    pStation nouv = (pStation)malloc(sizeof(Station));
-    if (nouv == NULL) exit(1);
-    
-    nouv->id = id;
-    copierTexte(nouv->id_str, code);
-    nouv->capacite = cap;
-    nouv->conso = 0;
-    nouv->h = 1;
-    nouv->fg = NULL;
-    nouv->fd = NULL;
-    return nouv;
-}
-
-pStation inserer(pStation a, int id, char* code, long cap, long flux) {
-    if (a == NULL) {
-        pStation nouv = creerStation(id, code, cap);
-        nouv->conso = flux;
-        return nouv;
-    }
-
-    int cmp = comparerTexte(code, a->id_str);
-
-    if (cmp < 0) {
-        a->fg = inserer(a->fg, id, code, cap, flux);
-    } 
-    else if (cmp > 0) {
-        a->fd = inserer(a->fd, id, code, cap, flux);
-    } 
-    else {
-        // --- CORRECTION MAJEURE ICI ---
-        // On additionne (+=) au lieu d'écraser (=) pour cumuler les lignes du fichier
-        if (cap > 0) a->capacite += cap; 
-        
-        a->conso += flux;
-        return a;
-    }
-
-    // Mise à jour hauteur et équilibrage
-    a->h = 1 + max(hauteur(a->fg), hauteur(a->fd));
-    int eq = equilibre(a);
-
-    if (eq > 1 && comparerTexte(code, a->fg->id_str) < 0) return rotationDroite(a);
-    if (eq < -1 && comparerTexte(code, a->fd->id_str) > 0) return rotationGauche(a);
-    if (eq > 1 && comparerTexte(code, a->fg->id_str) > 0) return doubleRotationGD(a);
-    if (eq < -1 && comparerTexte(code, a->fd->id_str) < 0) return doubleRotationDG(a);
-
-    return a;
-}
+// --- Parcours et Libération ---
 
 void infixe(pStation a, FILE* fs) {
     if (a != NULL) {
-        infixe(a->fd, fs); // Parcours Inverse (Décroissant)
-        if (fs != NULL) {
-            fprintf(fs, "%s;%ld;%ld\n", a->id_str, a->capacite, a->conso);
-        }
         infixe(a->fg, fs);
+        // Format de sortie : ID;CAPACITE;CONSO
+        // %.3f pour garder la précision du fichier .dat sans abuser
+        fprintf(fs, "%s;%.6f;%.6f\n", a->id_str, a->capacite, a->conso);
+        infixe(a->fd, fs);
     }
 }
 
