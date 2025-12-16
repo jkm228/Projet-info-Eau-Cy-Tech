@@ -111,4 +111,37 @@ void charger(char* chemin, pStation* racine, char* mode) {
         long valCapacite = chaineVersLong(cols[2]);    // Col 3
         long valConsommation = chaineVersLong(cols[3]); // Col 4
 
-        //
+        // --- LOGIQUE DE TRI ---
+
+        // 1. MODE MAX (Capacité)
+        if (estEgal(mode, "max")) {
+            // On cherche les stations, donc celles qui ont une capacité de lien (valCapacite)
+            // Et qui ne sont PAS des clients (valConsommation == 0)
+            if (valCapacite > 0 && valConsommation == 0) {
+                // On insère la station destinataire (cols[1]) avec sa capacité
+                *racine = inserer(*racine, 0, cols[1], valCapacite, 0);
+            }
+        }
+        
+        // 2. MODE SRC (Volume Capté / Transfert)
+        // On cherche le flux entre stations (Sources vers Usines)
+        else if (estEgal(mode, "src")) {
+            if (valCapacite > 0 && valConsommation == 0) {
+                // On insère la station source (cols[0]) qui fournit ce volume
+                *racine = inserer(*racine, 0, cols[0], 0, valCapacite);
+            }
+        }
+
+        // 3. MODE REAL ou LV (Consommation Réelle)
+        // On ne cherche QUE les clients finaux (ceux qui ont une consommation > 0)
+        else if (estEgal(mode, "real") || estEgal(mode, "lv")) {
+            if (valConsommation > 0) {
+                // C'est un client !
+                // On l'attribue à la station qui le dessert (cols[0])
+                *racine = inserer(*racine, 0, cols[0], 0, valConsommation);
+            }
+        }
+    }
+
+    fclose(fp);
+}
