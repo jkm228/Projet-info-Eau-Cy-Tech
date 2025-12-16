@@ -5,23 +5,21 @@
 
 #define MAX_LIGNE 2048
 
-// --- Fonctions utilitaires manuelles (remplacent string.h et stdlib.h) ---
-
-// Remplace strcmp : Renvoie 1 si les chaines sont identiques, 0 sinon
-int estEgal(const char* s1, const char* s2) {
+int estEgal(char* s1, char* s2) {
     int i = 0;
     while (s1[i] != '\0' && s2[i] != '\0') {
         if (s1[i] != s2[i]) {
-            return 0; // Différent
+            return 0; 
         }
         i++;
     }
-    // Si les deux finissent en même temps, c'est égal
-    if (s1[i] == '\0' && s2[i] == '\0') return 1;
+    if (s1[i] == '\0' && s2[i] == '\0'){
+        return 1;
+    }
     return 0;
 }
 
-// Remplace strcpy : Copie src dans dest
+
 void copierChaine(char* dest, const char* src) {
     int i = 0;
     while (src[i] != '\0') {
@@ -31,15 +29,15 @@ void copierChaine(char* dest, const char* src) {
     dest[i] = '\0'; // Ne pas oublier le caractère de fin
 }
 
-// Remplace atol/atof : Convertit une chaine en entier long
-// S'arrête si on croise un point (pour gérer les 45.0 qui deviennent 45)
-long chaineVersLong(const char* s) {
+
+long chaineVersLong(char* s) {
     long res = 0;
     int i = 0;
     
     // Gestion du cas vide ou tiret
-    if (s[0] == '\0' || s[0] == '-') return 0;
-
+    if (s[0] == '\0' || s[0] == '-'){
+        return 0;
+    }
     while (s[i] >= '0' && s[i] <= '9') {
         res = res * 10 + (s[i] - '0'); // Conversion ASCII vers entier
         i++;
@@ -47,7 +45,6 @@ long chaineVersLong(const char* s) {
     return res;
 }
 
-// --- Fonction principale ---
 
 void charger(char* chemin, pStation* racine, char* mode) {
     FILE* fp = fopen(chemin, "r");
@@ -58,10 +55,9 @@ void charger(char* chemin, pStation* racine, char* mode) {
 
     char ligne[MAX_LIGNE];
     
-    // Lire la première ligne (entête) pour l'ignorer
     fgets(ligne, MAX_LIGNE, fp);
 
-    // Lecture ligne par ligne
+    
     while (fgets(ligne, MAX_LIGNE, fp) != NULL) {
         
         char cols[5][50]; // Tableau pour stocker les 5 colonnes
@@ -74,7 +70,6 @@ void charger(char* chemin, pStation* racine, char* mode) {
         // Initialisation des colonnes à vide par sécurité
         for(int k=0; k<5; k++) cols[k][0] = '\0';
 
-        // --- PARSING MANUEL (Remplace strtok) ---
         // On parcourt la ligne caractère par caractère
         while (ligne[idxLigne] != '\0' && idxCol < 5) {
             char c = ligne[idxLigne];
@@ -127,10 +122,12 @@ void charger(char* chemin, pStation* racine, char* mode) {
         else {
             // Mode src ou real (consommation)
             long debit = 0;
-            if (val5 > 0) debit = val5;
-            else debit = val4;
-
-            // On ne prend que si débit > 0 et qu'il y a un ID consommateur (col 2)
+            if (val5 > 0){
+                debit = val5;
+            }
+            else{
+                debit = val4;
+            }
             if (debit > 0 && estEgal(cols[2], "-") == 0) {
                 *racine = inserer(*racine, 0, cols[2], 0, debit);
             }
