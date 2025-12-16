@@ -95,7 +95,7 @@ if [ "$CMD" = "histo" ]; then
         
         set bmargin 8
         set grid y
-        set format y "%.2f" 
+        set format y "%.6f" 
         
         # --- GRAPHIQUE 1 : Les Min ---
         set title "Les 50 plus faibles"
