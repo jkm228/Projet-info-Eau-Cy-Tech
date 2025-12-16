@@ -1,129 +1,160 @@
 #!/bin/bash
 
 # ===================================================================
-# PROJET C-WILDWATER - Script de Traitement
+# PROJET C-WILDWATER - Script de Traitement (Conforme Consignes)
 # ===================================================================
 
 # 1. GESTION DE L'AIDE (-h)
 if [ "$1" = "-h" ]; then
-    echo "Usage: $0 <fichier_dat> <type_station> <type_conso> [id_station]"
+    echo "Usage: $0 <fichier_dat> <mode_usine>"
     echo ""
-    echo "Types de station :"
-    echo "  usine     : Analyse des usines de traitement (Plant)"
-    echo "  stockage  : Analyse des réservoirs (Storage)"
-    echo "  source    : Analyse des sources (Source/Well)"
-    echo ""
-    echo "Types de consommateur :"
-    echo "  all       : Tous les consommateurs"
-    echo "  ind       : Individuels"
-    echo "  ent       : Entreprises"
-    echo ""
-    echo "Exemple :"
-    echo "  $0 c-wildwater_v0.dat usine all"
+    echo "Modes pour les usines :"
+    echo "  cap     : Capacité maximale (Millions m3)"
+    echo "  flow    : Volume capté depuis les sources (Millions m3)"
+    echo "  treat   : Volume traité (après fuites) (Millions m3)"
     exit 0
 fi
 
 # 2. VERIFICATION DES ARGUMENTS
-if [ $# -lt 3 ]; then
-    echo "Erreur : Nombre d'arguments insuffisant."
-    echo "Utilisez '$0 -h' pour l'aide."
+if [ $# -lt 2 ]; then
+    echo "Erreur : Arguments manquants."
+    echo "Usage: $0 <fichier_dat> <mode>"
     exit 1
 fi
 
 FICHIER_DAT="$1"
-TYPE_STATION="$2"
-TYPE_CONSO="$3"
-# ID_STATION="$4" (Optionnel, pour plus tard)
+MODE="$2"
 
-# Vérification de l'existence du fichier
 if [ ! -f "$FICHIER_DAT" ]; then
-    echo "Erreur : Le fichier '$FICHIER_DAT' est introuvable."
+    echo "Erreur : Fichier '$FICHIER_DAT' introuvable."
     exit 2
 fi
 
-# 3. NETTOYAGE ET COMPILATION
-echo "Nettoyage et compilation du projet C..."
+# 3. COMPILATION (Sécurité)
 if [ -f "Makefile" ]; then
     make clean > /dev/null
     make > /dev/null
-    if [ $? -ne 0 ]; then
-        echo "Erreur : La compilation a échoué."
-        exit 3
-    fi
+    if [ $? -ne 0 ]; then echo "Erreur Compilation"; exit 3; fi
 else
-    echo "Erreur : Makefile introuvable."
-    exit 3
+    echo "Erreur : Makefile introuvable."; exit 3
 fi
 
-# 4. FILTRAGE DES DONNÉES (L'étape clé !)
-# On prépare un fichier temporaire simple pour le C : "ID;CAPACITE;CONSOMMATION"
-# Cela évite de gérer les cas bizarres dans le C.
+# 4. FILTRAGE ET CALCULS (C'est ici qu'on gère les consignes !)
+# On convertit tout en Millions de m3 (/1000000) dès le début.
 
 FICHIER_TMP="input_data.tmp"
-echo "Filtrage des données pour le type '$TYPE_STATION'..."
+echo "Préparation des données pour le mode '$MODE'..."
 
-# Définition du motif de recherche selon le type demandé
-# (On adapte les mots-clés du sujet aux mots-clés du fichier .dat)
-case "$TYPE_STATION" in
-    "usine")
-        MOTIF="Plant"
+case "$MODE" in
+    "cap")
+        # On cherche les usines (Plant) définies (col 2) avec leur capacité (col 4)
+        # Format C : ID;CAPACITE;0
+        awk -F';' '$2 ~ "Plant" && $4 != "-" {printf "%s;%.6f;0\n", $2, $4/1000000}' "$FICHIER_DAT" > "$FICHIER_TMP"
+        TITRE_GRAPH="Capacité Maximale (Mm3)"
+        FICHIER_SORTIE="vol_max.dat"
         ;;
-    "stockage")
-        MOTIF="Storage"
+        
+    "flow")
+        # On cherche les flux Sources -> Usine
+        # Le flux est défini par une source (Source|Well|... en col 2) vers une usine (Plant en col 3)
+        # Format C : ID_USINE;0;VOLUME
+        awk -F';' '$2 ~ "Source|Well|Resurgence|Spring|Fountain" && $3 ~ "Plant" {printf "%s;0;%.6f\n", $3, $4/1000000}' "$FICHIER_DAT" > "$FICHIER_TMP"
+        TITRE_GRAPH="Volume Capté Total (Mm3)"
+        FICHIER_SORTIE="vol_captation.dat"
         ;;
-    "source")
-        MOTIF="Source|Well" # Regex pour prendre les deux
+
+    "treat")
+        # On cherche les flux Sources -> Usine MAIS on applique les fuites
+        # Col 4 = Volume, Col 5 = Fuites (%)
+        # Formule : Vol * (1 - Fuite/100)
+        awk -F';' '
+        $2 ~ "Source|Well|Resurgence|Spring|Fountain" && $3 ~ "Plant" {
+            vol = $4;
+            fuite = ($5 == "-" ? 0 : $5);
+            reel = vol * (1 - fuite/100);
+            printf "%s;0;%.6f\n", $3, reel/1000000
+        }' "$FICHIER_DAT" > "$FICHIER_TMP"
+        TITRE_GRAPH="Volume Traité Net (Mm3)"
+        FICHIER_SORTIE="vol_traitement.dat"
         ;;
     *)
-        echo "Erreur : Type de station '$TYPE_STATION' inconnu."
+        echo "Erreur : Mode '$MODE' inconnu (choisir: cap, flow, treat)."
         exit 1
         ;;
 esac
 
-# Utilisation de AWK pour normaliser les données
-# Si la ligne définit la station (ex: contient "Plant" et une Capacité) -> ID;CAP;0
-# Si la ligne est un flux (ex: "Plant" vers "Client") -> ID;0;CONSO
-awk -F';' -v motif="$MOTIF" '
-BEGIN { OFS=";" }
-# Cas 1 : Définition de la station (Capacité en col 4, pas de tiret)
-$2 ~ motif && $4 != "-" {
-    print $2, $4, 0
-}
-# Cas 2 : Flux sortant de la station (Station en col 1, Conso en col 5)
-$1 ~ motif && $5 != "-" {
-    print $1, 0, $5
-}
-' "$FICHIER_DAT" > "$FICHIER_TMP"
-
-# Vérification que le filtrage a donné quelque chose
-if [ ! -s "$FICHIER_TMP" ]; then
-    echo "Attention : Aucune donnée trouvée pour ce type de station."
-    exit 0
-fi
-
 # 5. EXECUTION DU PROGRAMME C
-# Le programme C prendra le fichier temporaire, et le mode (si besoin)
-echo "Lancement du traitement C..."
-./c-wire "$FICHIER_TMP" "$TYPE_STATION" "$TYPE_CONSO"
+# Le C fait la somme des valeurs par station
+echo "Exécution du traitement C..."
+./c-wire "$FICHIER_TMP"
 
-if [ $? -ne 0 ]; then
-    echo "Erreur lors de l'exécution du programme C."
+if [ ! -s "stats.csv" ]; then
+    echo "Erreur : Le programme C n'a rien produit."
     exit 4
 fi
 
-# 6. TRI FINAL ET AFFICHAGE (Optionnel ici, souvent fait par le C ou après)
-# Le sujet demande souvent de trier la sortie.
-# Supposons que le C a produit "output.csv".
-if [ -f "stats.csv" ]; then
-    echo "Tri des résultats..."
-    # Exemple de tri : Par capacité décroissante (col 2)
-    sort -t';' -k2,2nr stats.csv > "resultats_${TYPE_STATION}.csv"
-    echo "Terminé. Résultats dans 'resultats_${TYPE_STATION}.csv'."
-    
-    # Nettoyage
-    rm "$FICHIER_TMP"
+# 6. TRI FINAL ET FORMATAGE (Consigne : Alphabétique Inverse)
+echo "Génération du fichier $FICHIER_SORTIE trié (Alpha Inverse)..."
+
+# On ajoute l'en-tête spécifique
+echo "Station;Valeur(Mm3)" > "$FICHIER_SORTIE"
+
+# Tri inverse sur la 1ère colonne (ID)
+# Le fichier stats.csv du C est : ID;CAP;CONSO. 
+# Selon le mode, on veut soit la CAP (col 2) soit la CONSO (col 3)
+if [ "$MODE" = "cap" ]; then
+    COL_VAL=2
 else
-    echo "Erreur : Le fichier de sortie 'stats.csv' n'a pas été généré."
+    COL_VAL=3
 fi
 
-# Fin du script
+# On extrait ID et la bonne colonne, puis on trie Z->A (sort -r)
+awk -F';' -v col=$COL_VAL 'NR>1 {print $1";"$(col)}' stats.csv | sort -t';' -k1,1r >> "$FICHIER_SORTIE"
+
+# Nettoyage temporaire
+rm "$FICHIER_TMP" "stats.csv"
+
+# 7. GENERATION GNUPLOT (Consigne : 10 plus gros, 50 plus petits)
+echo "Génération du graphique..."
+
+# Préparation des données pour Gnuplot (Tri numérique cette fois)
+# On exclut le header
+tail -n +2 "$FICHIER_SORTIE" | sort -t';' -k2,2n > graph_data.sorted
+
+# Les 50 plus petits (tête du fichier trié croissant)
+head -n 50 graph_data.sorted > data_min.dat
+# Les 10 plus grands (queue du fichier trié croissant)
+tail -n 10 graph_data.sorted > data_max.dat
+
+gnuplot -persist <<-EOF
+    set terminal png size 1200,800 enhanced font "Arial,10"
+    set output '${FICHIER_SORTIE%.*}.png'
+    set datafile separator ";"
+    set multiplot layout 1,2 title "Statistiques : ${TITRE_GRAPH}"
+    
+    # Graphique 1 : Les 10 plus grands
+    set title "Top 10 Usines (Plus grand volume)"
+    set style data histograms
+    set style fill solid 1.0 border -1
+    set ylabel "Volume (Mm3)"
+    set xtics rotate by -45
+    set boxwidth 0.7
+    set grid y
+    plot "data_max.dat" using 2:xtic(1) notitle linecolor rgb "#006400"
+
+    # Graphique 2 : Les 50 plus petits
+    set title "Les 50 plus petites Usines"
+    # On enlève les xtics car 50 noms c'est illisible
+    unset xtics 
+    set xlabel "Usines (Identifiants masqués pour lisibilité)"
+    plot "data_min.dat" using 2 notitle linecolor rgb "#FF4500"
+
+    unset multiplot
+EOF
+
+# Nettoyage fichiers gnuplot
+rm graph_data.sorted data_min.dat data_max.dat
+
+echo "Terminé ! Fichiers générés :"
+echo " - Données : $FICHIER_SORTIE"
+echo " - Image   : ${FICHIER_SORTIE%.*}.png"
