@@ -15,32 +15,38 @@ void charger(char* chemin, pStation* racine) {
 
     // Lecture ligne par ligne
     while (fgets(ligne, 1024, f)) {
-        // Tentative de lecture de 4 champs (Mode graphe complet)
+        // Tentative de lecture de 4 champs (Mode Leaks : SRC;DEST;VOL;FUITE)
         int n = sscanf(ligne, "%[^;];%[^;];%lf;%lf", buf1, buf2, &val1, &val2);
         
-        if (n == 3) { 
-            // Format Histo : ID;CAP;CONSO
-            // Re-lecture pour être sûr des types
-            double c, k;
-            sscanf(ligne, "%[^;];%lf;%lf", buf1, &c, &k);
-            *racine = inserer(*racine, buf1, c, k);
-        }
-        else if (n == 4) {
-            // Format Leaks : SOURCE;DEST;VOL;FUITE
+        if (n == 4) {
+            // MODE LEAKS
             
-            // Insertion/Recherche des noeuds source et destination
+            // 1. Insertion/Recherche des noeuds source et destination
             *racine = inserer(*racine, buf1, 0, 0); 
             pStation src = rechercher(*racine, buf1);
             
             *racine = inserer(*racine, buf2, 0, 0);
             pStation dest = rechercher(*racine, buf2);
             
-            // Création du lien dans le graphe
+            // 2. Création du lien physique dans le graphe
             ajouterConnexion(src, dest, val2);
             
-            // Ajout du volume initial à la source (si applicable)
-            // Dans le fichier filtré, val1 est le volume source
-            if (val1 > 0) src->conso += val1; 
+            // 3. Gestion des flux d'eau (CORRECTION IMPORTANTE)
+            // Si la ligne contient un volume (ex: Source -> Plant), c'est de l'eau qui entre dans le système.
+            // On l'ajoute à la station DESTINATAIRE (l'Usine) pour qu'elle puisse la redistribuer ensuite.
+            if (val1 > 0) {
+                dest->conso += val1; 
+                // On l'ajoute aussi à la source au cas où on voudrait partir de la source
+                src->conso += val1;  
+            }
+        }
+        else {
+            // MODE HISTO (3 colonnes : ID;CAP;CONSO)
+            // On relit proprement car le sscanf précédent a échoué
+            double c, k;
+            if (sscanf(ligne, "%[^;];%lf;%lf", buf1, &c, &k) == 3) {
+                *racine = inserer(*racine, buf1, c, k);
+            }
         }
     }
     fclose(f);
