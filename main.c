@@ -7,48 +7,70 @@
 double calculerFuitesAval(pStation s) {
     if (s == NULL) return 0;
     
-    double fuites_ici = 0;
+    // 1. On compte le nombre d'enfants (tuyaux sortants)
+    int nb_enfants = 0;
     Tuyau* t = s->liste_aval;
+    while (t != NULL) {
+        nb_enfants++;
+        t = t->suivant;
+    }
+
+    // Si c'est un cul-de-sac (client final), pas de fuite aval
+    if (nb_enfants == 0) return 0;
+
+    // 2. Principe de conservation : On divise le volume par le nombre de tuyaux
+    // (Hypothèse de répartition équitable faute de données précises)
+    double volume_par_enfant = s->conso / nb_enfants;
+    
+    double fuites_totales_ici = 0;
+    t = s->liste_aval; // On reprend au début de la liste
     
     while (t != NULL) {
-        // Le volume qui passe dans ce tuyau est le volume présent dans la station *source
-        // (Simplification : on suppose que s->conso contient le volume d'eau qui traverse s)
+        // Calcul de la fuite sur CE tuyau spécifique
+        // On applique le % de fuite sur la part de volume qui passe ici
+        double perte_tuyau = volume_par_enfant * (t->fuite_percent / 100.0);
         
-        // Calcul fuite sur ce tronçon
-        double perte = s->conso * (t->fuite_percent / 100.0);
-        
-        // On propage l'eau restante à l'enfant
-        t->destinataire->conso += (s->conso - perte);
-        
-        // La fuite totale = fuite ce tuyau + fuites en aval
-        fuites_ici += perte + calculerFuitesAval(t->destinataire);
+        // On transmet l'eau restante à la station suivante
+        if (t->destinataire != NULL) {
+            t->destinataire->conso += (volume_par_enfant - perte_tuyau);
+            
+            // On ajoute la fuite du tuyau + les fuites des enfants de l'enfant (récursif)
+            fuites_totales_ici += perte_tuyau + calculerFuitesAval(t->destinataire);
+        }
         
         t = t->suivant;
     }
-    return fuites_ici;
+    
+    return fuites_totales_ici;
 }
 
 int main(int argc, char** argv) {
+    // Usage : ./c-wire <fichier_tmp> [Target_ID]
+    
     if (argc < 2) return 1;
 
     pStation arbre = NULL;
     char* fichier_in = argv[1];
     char* target_id = (argc >= 3) ? argv[2] : NULL;
 
-    // Chargement (Le file.c doit gérer le format 4 colonnes si mode leaks)
+    // Chargement
     charger(fichier_in, &arbre);
 
     FILE* f_out = fopen("stats.csv", "w");
-    if (f_out == NULL) { liberer(arbre); return 1; }
+    if (f_out == NULL) {
+        liberer(arbre);
+        return 1;
+    }
 
     if (target_id != NULL) {
         // --- MODE LEAKS ---
         pStation s = rechercher(arbre, target_id);
         if (s != NULL) {
-            // On lance le calcul récursif sur le réseau aval
+            // Le calcul récursif va maintenant diviser les flux correctement
             double total_fuites = calculerFuitesAval(s);
             fprintf(f_out, "%s;%.6f\n", target_id, total_fuites);
         } else {
+            // Station introuvable
             fprintf(f_out, "%s;-1\n", target_id);
         }
     } else {
@@ -59,5 +81,6 @@ int main(int argc, char** argv) {
 
     fclose(f_out);
     liberer(arbre);
+
     return 0;
 }
