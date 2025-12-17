@@ -1,10 +1,7 @@
 #!/bin/bash
 
-# ===================================================================
-# PROJET C-WILDWATER - Script de Traitement (FINAL - DEDUPLICATION)
-# ===================================================================
+# Script de traitement C-WILDWATER
 
-# 0. DEBUT CHRONO
 START_TIME=$(date +%s%3N)
 
 fin_script() {
@@ -15,7 +12,7 @@ fin_script() {
     exit $1
 }
 
-# 1. GESTION AIDE
+# Aide
 if [ "$1" = "-h" ]; then
     echo "Usage: $0 <fichier_dat> <commande> [arg]"
     echo "  histo <max|src|real>"
@@ -23,7 +20,6 @@ if [ "$1" = "-h" ]; then
     fin_script 0
 fi
 
-# 2. VERIFICATIONS
 if [ $# -lt 3 ]; then
     echo "Erreur : Arguments insuffisants."
     fin_script 1
@@ -36,8 +32,8 @@ ARG_3="$3"
 if [ ! -f "$FICHIER_DAT" ]; then echo "Erreur Fichier"; fin_script 2; fi
 if [ ! -f "Makefile" ]; then echo "Erreur Makefile"; fin_script 3; fi
 
+# Compilation si nécessaire
 if [ ! -x "c-wire" ]; then
-    echo "Compilation..."
     make > /dev/null
     if [ $? -ne 0 ]; then echo "Erreur Compilation"; fin_script 3; fi
 fi
@@ -45,14 +41,10 @@ fi
 FICHIER_TMP="input_data.tmp"
 FICHIER_STATS="stats.csv"
 
-# 3. TRAITEMENT
+# Traitement
 if [ "$COMMANDE" = "histo" ]; then
     
     if [ $# -ne 3 ]; then echo "Erreur Args"; fin_script 1; fi
-    echo "Traitement Histo '$ARG_3'..."
-
-    # Pour l'histo, pas besoin de déduplication complexe car on somme des capacités/volumes
-    # qui sont définis sur des lignes spécifiques (sauf pour real où on filtre src->plant)
 
     case "$ARG_3" in
         "max")
@@ -86,9 +78,10 @@ if [ "$COMMANDE" = "histo" ]; then
     if [ $? -ne 0 ]; then echo "Erreur C"; fin_script 4; fi
 
     echo "$HEADER" > "$FICHIER_SORTIE"
+    # Tri décroissant sur la colonne (Z -> A)
     awk -F';' -v c=$COL 'NR>1 {print $1";"$(c)}' "$FICHIER_STATS" | sort -t';' -k1,1r >> "$FICHIER_SORTIE"
 
-    # GnuPlot
+    # Graphiques GnuPlot
     tail -n +2 "$FICHIER_SORTIE" | sort -t';' -k2,2n > graph.tmp
     head -n 50 graph.tmp > min.dat
     tail -n 10 graph.tmp > max.dat
@@ -115,15 +108,12 @@ elif [ "$COMMANDE" = "leaks" ]; then
 
     if [ $# -ne 3 ]; then echo "Erreur Args"; fin_script 1; fi
     TARGET="$ARG_3"
-    echo "Analyse Fuites pour '$TARGET'..."
 
-    # --- EXTRACTION AVEC DÉDUPLICATION (CORRECTION MAJEURE) ---
-    
+    # Filtrage des données et déduplication des tuyaux
     awk -F';' '
     BEGIN {OFS=";"}
     
-    # 1. Connexions Source -> Usine (Col 2 -> Col 3)
-    # Celles-ci sont uniques par définition dans le fichier, mais on sécurise.
+    # Sources vers Usines (Uniques)
     $2 ~ "Source|Well|Resurgence|Spring|Fountain" && $3 ~ "Plant" { 
         pair = $2 ";" $3
         if (!seen[pair]++) {
@@ -131,19 +121,16 @@ elif [ "$COMMANDE" = "leaks" ]; then
         }
     }
     
-    # 2. Connexions Usine -> Stockage/Service (Col 1 -> Col 2)
-    # Cest ICI que se trouvaient les milliers de doublons
+    # Usines vers Stockages/Services
     $1 ~ "Plant" && ($2 ~ "Storage" || $2 ~ "Service") {
         pair = $1 ";" $2
         if (!seen[pair]++) {
-            # Le volume est inconnu ici (0), la fuite est en col 4 ou 5 selon le type
             leak = ($4=="-" ? ($5=="-"?0:$5) : $4)
             print $1, $2, 0, leak
         }
     }
 
-    # 3. Connexions Service -> Client ou Stockage -> Jonction (Col 2 -> Col 3)
-    # On prend tout ce qui reste de logique : Si Col 2 et Col 3 existent
+    # Autres connexions (Services, Clients...)
     $2 != "" && $2 != "-" && $3 != "" && $3 != "-" && $2 !~ "Source|Well" {
         pair = $2 ";" $3
         if (!seen[pair]++) {
@@ -160,7 +147,7 @@ elif [ "$COMMANDE" = "leaks" ]; then
     cat "$FICHIER_STATS" >> "$FICHIER_SORTIE"
     
     if grep -q "\-1$" "$FICHIER_SORTIE"; then
-        echo "Info : Usine introuvable ou -1."
+        echo "Info : Station introuvable."
     fi
 
 else
