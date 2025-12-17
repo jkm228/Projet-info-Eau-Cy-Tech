@@ -3,7 +3,7 @@
 
 #include "avl.h"
 
-// Charge le fichier CSV simplifié (input_c.tmp) dans l'arbre AVL
+// Chargement des données CSV dans l'AVL
 void charger(char* chemin, pStation* racine);
 
 #endif
