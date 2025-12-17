@@ -15,11 +15,11 @@ double calculerFuitesAval(pStation s) {
         t = t->suivant;
     }
 
-    // Si c'est un cul-de-sac (client final), pas de fuite aval
+    // Si c'est un cul-de-sac (client final), pas de fuite aval à calculer depuis ici
     if (nb_enfants == 0) return 0;
 
     // 2. Principe de conservation : On divise le volume par le nombre de tuyaux
-    // (Hypothèse de répartition équitable faute de données précises)
+    // (Hypothèse de répartition équitable faute de données précises sur la demande client)
     double volume_par_enfant = s->conso / nb_enfants;
     
     double fuites_totales_ici = 0;
@@ -32,9 +32,10 @@ double calculerFuitesAval(pStation s) {
         
         // On transmet l'eau restante à la station suivante
         if (t->destinataire != NULL) {
+            // On ajoute l'eau qui arrive à l'eau déjà présente (cas de sources multiples)
             t->destinataire->conso += (volume_par_enfant - perte_tuyau);
             
-            // On ajoute la fuite du tuyau + les fuites des enfants de l'enfant (récursif)
+            // On ajoute la fuite du tuyau + les fuites des enfants de l'enfant (appel récursif)
             fuites_totales_ici += perte_tuyau + calculerFuitesAval(t->destinataire);
         }
         
@@ -66,7 +67,7 @@ int main(int argc, char** argv) {
         // --- MODE LEAKS ---
         pStation s = rechercher(arbre, target_id);
         if (s != NULL) {
-            // Le calcul récursif va maintenant diviser les flux correctement
+            // On lance le calcul récursif sur le réseau aval
             double total_fuites = calculerFuitesAval(s);
             fprintf(f_out, "%s;%.6f\n", target_id, total_fuites);
         } else {
