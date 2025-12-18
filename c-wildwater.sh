@@ -122,6 +122,37 @@ elif [ "$COMMANDE" = "leaks" ]; then
     # Filtrage Leaks
     awk -F';' '
     BEGIN {OFS=";"}
+    $2 ~ "Source|Well|Resurgence|Spring|Fountain" && $3 ~ "Plant" { 
+        pair = $2 ";" $3
+        if (!seen[pair]++) print $2, $3, $4/1000000, ($5=="-"?0:$5) 
+    }
+    $1 ~ "Plant" && ($2 ~ "Storage" || $2 ~ "Service") {
+        pair = $1 ";" $2
+        if (!seen[pair]++) {
+            leak = ($4=="-" ? ($5=="-"?0:$5) : $4)
+            print $1, $2, 0, leak
+        }
+    }
+    $2 != "" && $2 != "-" && $3 != "" && $3 != "-" && $2 !~ "Source|Well" {
+        pair = $2 ";" $3
+        if (!seen[pair]++) print $2, $3, 0, ($5=="-"?0:$5)
+    }' "$FICHIER_DAT" > "$FICHIER_TMP"
+
+    # Traitement C
+    ./c-wire "$FICHIER_TMP" "$TARGET"
+    if [ $? -ne 0 ]; then echo "Erreur C"; fin_script 4; fi
+
+    FICHIER_SORTIE="leaks.csv"
+    echo "identifier;Leak volume (M.m3.year-1)" > "$FICHIER_SORTIE"
+    cat "$FICHIER_STATS" >> "$FICHIER_SORTIE"
     
-    # Sources vers Usines
-    $2 ~ "Source|Well|Resurgence|Spring|Fountain" && $3 ~ "Plant"
+    if grep -q "\-1$" "$FICHIER_SORTIE"; then
+        echo "Info : Station introuvable."
+    fi
+
+else
+    echo "Erreur Commande"; fin_script 1
+fi
+
+rm -f "$FICHIER_TMP" "$FICHIER_STATS"
+fin_script 0
