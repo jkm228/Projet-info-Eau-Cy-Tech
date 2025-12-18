@@ -1,8 +1,6 @@
 #!/bin/bash
 
-# ===================================================================
-# PROJET C-WILDWATER - Script de Traitement (FINAL - CONFORME PDF)
-# ===================================================================
+
 
 # 0. DEBUT CHRONO
 START_TIME=$(date +%s%3N)
@@ -50,7 +48,7 @@ if [ "$COMMANDE" = "histo" ]; then
     
     if [ $# -ne 3 ]; then echo "Erreur Args"; fin_script 1; fi
 
-    # Préparation des données selon le mode (Division par 1 000 000 pour M.m3)
+    # Préparation des données
     case "$ARG_3" in
         "max")
             awk -F';' '$2 ~ "Plant" && $4 != "-" {printf "%s;%.6f;0\n", $2, $4/1000000}' "$FICHIER_DAT" > "$FICHIER_TMP"
@@ -83,16 +81,47 @@ if [ "$COMMANDE" = "histo" ]; then
     ./c-wire "$FICHIER_TMP"
     if [ $? -ne 0 ]; then echo "Erreur C"; fin_script 4; fi
 
-    # Génération du fichier de sortie trié
+    # Génération du fichier de sortie trié (Correction Tri Numérique Décroissant)
     echo "$HEADER" > "$FICHIER_SORTIE"
-    
-    # --- CORRECTION VALIDEE ---
-    # Tri Numérique (n) et Décroissant (r) sur la 2ème colonne (k2)
-    # Les plus grandes valeurs seront en haut du fichier .dat
     awk -F';' -v c=$COL 'NR>1 {print $1";"$(c)}' "$FICHIER_STATS" | sort -t';' -k2,2nr >> "$FICHIER_SORTIE"
 
     # Préparation Gnuplot
-    # On retrie en croissant (n) temporairement pour extraire facilement min/max pour le graph
     tail -n +2 "$FICHIER_SORTIE" | sort -t';' -k2,2n > graph.tmp
-    head -n 50 graph.tmp > min.dat  # Les 50 plus petits
-    tail -n 10 graph
+    head -n 50 graph.tmp > min.dat
+    tail -n 10 graph.tmp > max.dat
+
+
+gnuplot -persist <<-EOF
+set terminal png size 1200,800 enhanced font "Arial,10"
+set output '${FICHIER_SORTIE%.*}.png'
+set datafile separator ";"
+set multiplot layout 1,2 title "Statistiques : ${TITRE}"
+set style data histograms
+set style fill solid 1.0 border -1
+set ylabel "Volume (M.m3)"
+
+set title "Top 10 (Highest Values)"
+set xtics rotate by -45
+plot "max.dat" using 2:xtic(1) notitle linecolor rgb "#006400"
+
+set title "Bottom 50 (Lowest Values)"
+unset xtics
+plot "min.dat" using 2 notitle linecolor rgb "#FF4500"
+
+unset multiplot
+EOF
+# Fin du bloc Gnuplot
+
+    rm graph.tmp min.dat max.dat
+
+elif [ "$COMMANDE" = "leaks" ]; then
+
+    if [ $# -ne 3 ]; then echo "Erreur Args"; fin_script 1; fi
+    TARGET="$ARG_3"
+
+    # Filtrage Leaks
+    awk -F';' '
+    BEGIN {OFS=";"}
+    
+    # Sources vers Usines
+    $2 ~ "Source|Well|Resurgence|Spring|Fountain" && $3 ~ "Plant"
