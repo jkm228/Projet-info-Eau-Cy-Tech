@@ -77,11 +77,13 @@ if [ "$COMMANDE" = "histo" ]; then
     ./c-wire "$FICHIER_TMP"
     if [ $? -ne 0 ]; then echo "Erreur C"; fin_script 4; fi
 
-    echo "$HEADER" > "$FICHIER_SORTIE"
-    # Tri décroissant sur la colonne (Z -> A)
-    awk -F';' -v c=$COL 'NR>1 {print $1";"$(c)}' "$FICHIER_STATS" | sort -t';' -k1,1r >> "$FICHIER_SORTIE"
+
+echo "$HEADER" > "$FICHIER_SORTIE"
+    # CORRECTION : Tri numérique décroissant sur la colonne 2 (n=numérique, r=reverse)
+    awk -F';' -v c=$COL 'NR>1 {print $1";"$(c)}' "$FICHIER_STATS" | sort -t';' -k2,2nr >> "$FICHIER_SORTIE"
 
     # Graphiques GnuPlot
+    # On retrie en croissant (n) pour extraire facilement les min (head) et max (tail) pour le graph
     tail -n +2 "$FICHIER_SORTIE" | sort -t';' -k2,2n > graph.tmp
     head -n 50 graph.tmp > min.dat
     tail -n 10 graph.tmp > max.dat
