@@ -1,8 +1,6 @@
 #!/bin/bash
 
-# ===================================================================
-# PROJET C-WILDWATER - VERSION UNIVERSELLE (Win/Linux/Mac)
-# ===================================================================
+
 
 # 1. FORCE LA COMPATIBILITE NUMERIQUE (Le point au lieu de la virgule)
 export LC_NUMERIC=C
