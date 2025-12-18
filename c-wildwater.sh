@@ -48,14 +48,14 @@ if [ "$COMMANDE" = "histo" ]; then
 
     case "$ARG_3" in
         "max")
-            awk -F';' '$2 ~ "Plant" && $4 != "-" {printf "%s;%.6f;0\n", $2, $4/1000000}' "$FICHIER_DAT" > "$FICHIER_TMP"
+            awk -F';' '$2 ~ "Plant" && $4 != "-" {printf "%s;%.6f;0\n", $2, $4}' "$FICHIER_DAT" > "$FICHIER_TMP"
             HEADER="identifier;max volume (M.m3.year-1)"
             FICHIER_SORTIE="vol_max.dat"
             TITRE="Capacité Maximale"
             COL=2
             ;;
         "src")
-            awk -F';' '$2 ~ "Source|Well|Resurgence|Spring|Fountain" && $3 ~ "Plant" {printf "%s;0;%.6f\n", $3, $4/1000000}' "$FICHIER_DAT" > "$FICHIER_TMP"
+            awk -F';' '$2 ~ "Source|Well|Resurgence|Spring|Fountain" && $3 ~ "Plant" {printf "%s;0;%.6f\n", $3, $4}' "$FICHIER_DAT" > "$FICHIER_TMP"
             HEADER="identifier;source volume (M.m3.year-1)"
             FICHIER_SORTIE="vol_captation.dat"
             TITRE="Volume Capté"
@@ -63,8 +63,8 @@ if [ "$COMMANDE" = "histo" ]; then
             ;;
         "real")
             awk -F';' '$2 ~ "Source|Well|Resurgence|Spring|Fountain" && $3 ~ "Plant" {
-                vol = $4; fuite = ($5 == "-" ? 0 : $5); reel = vol * (1 - fuite/100);
-                printf "%s;0;%.6f\n", $3, reel/1000000
+                vol = $4; fuite = ($5 == "-" ? 0 : $5); reel = vol * (1 - fuite);
+                printf "%s;0;%.6f\n", $3, reel
             }' "$FICHIER_DAT" > "$FICHIER_TMP"
             HEADER="identifier;real volume (M.m3.year-1)"
             FICHIER_SORTIE="vol_traitement.dat"
