@@ -57,14 +57,14 @@ if [ "$COMMANDE" = "histo" ]; then
     # TRICK : 'tr -d \r' supprime les retours chariots Windows à la volée
     case "$ARG_3" in
         "max")
-            < "$FICHIER_DAT" tr -d '\r' | awk -F';' '$2 ~ "Plant" && $4 != "-" {printf "%s;%.6f;0\n", $2, $4/1000000}' > "$FICHIER_TMP"
+            < "$FICHIER_DAT" tr -d '\r' | awk -F';' '$2 ~ "Plant" && $4 != "-" {printf "%s;%.6f;0\n", $2, $4/1000}' > "$FICHIER_TMP"
             HEADER="identifier;max volume (M.m3.year-1)"
             FICHIER_SORTIE="vol_max.dat"
             TITRE="Capacité Maximale"
             COL=2
             ;;
         "src")
-            < "$FICHIER_DAT" tr -d '\r' | awk -F';' '$2 ~ "Source|Well|Resurgence|Spring|Fountain" && $3 ~ "Plant" {printf "%s;0;%.6f\n", $3, $4/1000000}' > "$FICHIER_TMP"
+            < "$FICHIER_DAT" tr -d '\r' | awk -F';' '$2 ~ "Source|Well|Resurgence|Spring|Fountain" && $3 ~ "Plant" {printf "%s;0;%.6f\n", $3, $4/1000}' > "$FICHIER_TMP"
             HEADER="identifier;source volume (M.m3.year-1)"
             FICHIER_SORTIE="vol_captation.dat"
             TITRE="Volume Capté"
@@ -73,7 +73,7 @@ if [ "$COMMANDE" = "histo" ]; then
         "real")
             < "$FICHIER_DAT" tr -d '\r' | awk -F';' '$2 ~ "Source|Well|Resurgence|Spring|Fountain" && $3 ~ "Plant" {
                 vol = $4; fuite = ($5 == "-" ? 0 : $5); reel = vol * (1 - fuite/100);
-                printf "%s;0;%.6f\n", $3, reel/1000000
+                printf "%s;0;%.6f\n", $3, reel/1000
             }' > "$FICHIER_TMP"
             HEADER="identifier;real volume (M.m3.year-1)"
             FICHIER_SORTIE="vol_traitement.dat"
@@ -105,11 +105,11 @@ set style data histograms
 set style fill solid 1.0 border -1
 set ylabel "Volume (M.m3)"
 
-set title "Top 10 (Highest Values)"
+set title "Top 10 (Les plus grandes valeurs)"
 set xtics rotate by -45
 plot "max.dat" using 2:xtic(1) notitle linecolor rgb "#006400"
 
-set title "Bottom 50 (Lowest Values)"
+set title "Bottom 50 (Les plus petites valeurs)"
 unset xtics
 plot "min.dat" using 2 notitle linecolor rgb "#FF4500"
 
@@ -129,7 +129,7 @@ elif [ "$COMMANDE" = "leaks" ]; then
     BEGIN {OFS=";"}
     $2 ~ "Source|Well|Resurgence|Spring|Fountain" && $3 ~ "Plant" { 
         pair = $2 ";" $3
-        if (!seen[pair]++) print $2, $3, $4/1000000, ($5=="-"?0:$5) 
+        if (!seen[pair]++) print $2, $3, $4/1000, ($5=="-"?0:$5) 
     }
     $1 ~ "Plant" && ($2 ~ "Storage" || $2 ~ "Service") {
         pair = $1 ";" $2
