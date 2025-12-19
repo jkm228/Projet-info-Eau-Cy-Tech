@@ -18,9 +18,17 @@ Visualiser les résultats : Générer automatiquement des graphiques histogramme
 
 # Installation et Compilation
 
-Cloner le dépôt :
-git clone https://github.com/ton-pseudo/c-wildwater.git
+# 1. Cloner le dépôt (remplace l'URL par la tienne)
+git clone https://github.com/TON_PSEUDO/c-wildwater.git
+
+# 2. Rentrer dans le dossier
 cd c-wildwater
+
+# 3. Vérifier que les fichiers sont bien là
+ls -l
+# (Tu dois voir : main.c, c-wildwater.sh, Makefile, avl.c...)
+
+
 
 
 
