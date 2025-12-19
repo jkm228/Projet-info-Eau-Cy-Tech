@@ -18,17 +18,66 @@ Visualiser les résultats : Générer automatiquement des graphiques histogramme
 
 # Installation et Compilation
 
-# 1. Cloner le dépôt (remplace l'URL par la tienne)
-git clone https://github.com/TON_PSEUDO/c-wildwater.git
+# 1. Cloner le dépôt 
+git clone https://github.com/jkm228/Projet-info-Eau-Cy-Tech.git
 
 # 2. Rentrer dans le dossier
-cd c-wildwater
+cd Projet-info-Eau-Cy-Tech
 
 # 3. Vérifier que les fichiers sont bien là
 ls -l
-# (Tu dois voir : main.c, c-wildwater.sh, Makefile, avl.c...)
 
+# 4. Rendre le script exécutable
+chmod +x c-wildwater.sh
 
+# 5. Compiler le programme C
+make
 
+# 6. Lancer le calcul max
+./c-wildwater.sh c-wildwater_v3.dat histo max
 
+# 7. Ouvrir l'image max
+xdg-open vol_max.png
+
+# 6. Lancer le calcul src
+./c-wildwater.sh c-wildwater_v3.dat histo src
+
+# 7. Ouvrir l'image src
+xdg-open vol_captation.png
+
+# 10. Lancer le calcul real
+./c-wildwater.sh c-wildwater_v3.dat histo real
+
+# 11. Ouvrir l'image real
+xdg-open vol_traitement.png
+
+# 12. Lancer le calcul pour une usine (exemple : Plant #VC300055Q)
+./c-wildwater.sh c-wildwater_v3.dat leaks "Plant #VC300055Q"
+
+# 13. Afficher le résultat dans le terminal
+cat leaks.csv
+
+# Afficher le début des fichiers csv triée de max,src et real
+head -n 20 vol_max.dat
+head -n 20 vol_captation.dat
+head -n 20 vol_traitement.dat
+
+# Organisation du Code
+Le programme mixe l'utilisation de Shell et C :
+
+c-wildwater.sh 
+
+Vérifie les arguments et les fichiers.
+
+Filtre le fichier CSV brut avec awk (suppression des colonnes inutiles, formatage).
+
+Gère la compatibilité numérique (points vs virgules pour un bon fonctionnement sur linux).
+
+Pilote Gnuplot pour la génération des images.
+
+# Le  C (Calcul) :
+main.c : Logique principale et gestion des arguments.
+file.c : Lecture du fichier temporaire et chargement en mémoire.
+avl.c / avl.h : Implémentation d'un Arbre AVL (Arbre Binaire de Recherche Équilibré) pour stocker les stations pour une recherche rapide.
+Modélisation Graphe : Chaque station possède une liste chaînée de ses connexions aval (liste_aval), permettant un parcours récursif du réseau.
 
