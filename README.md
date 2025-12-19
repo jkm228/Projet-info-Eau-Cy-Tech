@@ -16,3 +16,11 @@ Détecter les fuites : Identifier les pertes d'eau dans le réseau en aval d'une
 
 Visualiser les résultats : Générer automatiquement des graphiques histogrammes via Gnuplot.
 
+# Installation et Compilation
+
+Cloner le dépôt :
+git clone https://github.com/ton-pseudo/c-wildwater.git
+cd c-wildwater
+
+
+
