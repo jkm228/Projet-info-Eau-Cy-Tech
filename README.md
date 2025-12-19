@@ -81,3 +81,5 @@ file.c : Lecture du fichier temporaire et chargement en mémoire.
 avl.c / avl.h : Implémentation d'un Arbre AVL (Arbre Binaire de Recherche Équilibré) pour stocker les stations pour une recherche rapide.
 Modélisation Graphe : Chaque station possède une liste chaînée de ses connexions aval (liste_aval), permettant un parcours récursif du réseau.
 
+# Remarque importante :
+ Les volumes d'eau traités par les stations étant très importants (souvent supérieurs à plusieurs millions de mètres cubes), l'utilisation de l'unité brute ($m^3$) rendait l'axe des ordonnées du graphique illisible.Nous avons donc fait le choix de convertir les données en Millions de mètres cubes ($M.m^3$) dès la phase de pré-traitement des données.Cette opération est effectuée dans le script Shell via la commande awk, en divisant les volumes bruts par 1 000 000. Cela garantit que l'affichage graphique est à la fois lisible et cohérent avec l'étiquette de l'axe Y.
