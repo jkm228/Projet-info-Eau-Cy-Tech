@@ -77,8 +77,11 @@ Pilote Gnuplot pour la génération des images.
 
 # Le  C (Calcul) :
 main.c : Logique principale et gestion des arguments.
+
 file.c : Lecture du fichier temporaire et chargement en mémoire.
+
 avl.c / avl.h : Implémentation d'un Arbre AVL (Arbre Binaire de Recherche Équilibré) pour stocker les stations pour une recherche rapide.
+
 Modélisation Graphe : Chaque station possède une liste chaînée de ses connexions aval (liste_aval), permettant un parcours récursif du réseau.
 
 # Remarque importante :
