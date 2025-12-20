@@ -1,6 +1,6 @@
 #include "avl.h"
 
-// Comparaison manuelle de chaînes (ordre lexicographique)
+// Comparaison manuelle de chaînes 
 int comparerTexte(char* s1, char* s2) {
     int i = 0;
     while (s1[i] != '\0' && s2[i] != '\0') {
@@ -52,7 +52,7 @@ pStation creerStation(char* code, double cap) {
     return nouv;
 }
 
-// Ajout en tête de liste (O(1))
+// Ajout en tête de liste 
 void ajouterConnexion(pStation parent, pStation enfant, double fuite) {
     if (parent == NULL || enfant == NULL) return;
 
@@ -160,7 +160,7 @@ pStation doubleRotationDG(pStation a) {
     return rotationGauche(a);
 }
 
-// --- Parcours et Libération ---
+// Parcours et Libération
 
 void infixe(pStation a, FILE* fs) {
     if (a != NULL) {
