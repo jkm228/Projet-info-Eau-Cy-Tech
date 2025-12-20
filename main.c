@@ -3,7 +3,7 @@
 #include "avl.h"
 #include "file.h"
 
-// Parcours récursif pour calculer les pertes en aval
+// Parcours récursif pour calculer les pertes
 double calculerFuitesAval(pStation s) {
     if (s == NULL) return 0;
     
@@ -17,13 +17,13 @@ double calculerFuitesAval(pStation s) {
 
     if (nb_enfants == 0) return 0;
 
-    // Répartition équitable du volume sortant
+    // Répartition équitable du volume qui sort
     double volume_par_enfant = s->conso / nb_enfants;
     double fuites_totales = 0;
     
     t = s->liste_aval;
     while (t != NULL) {
-        // Fuite sur le tronçon actuel
+        // Fuite sur la zone actuel
         double perte_tuyau = volume_par_enfant * (t->fuite_percent / 100.0);
         
         if (t->destinataire != NULL) {
