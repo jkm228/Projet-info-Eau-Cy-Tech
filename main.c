@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include "avl.h"
 #include "file.h"
+// Les fuites sont un calcul en particulier pour un problème du réseau d'eau. 
+ //  On les place ici car avl.c est un outil de de calcul et de  stockage pour les autres modes (histo). Donc on les sépare pour être plus lisible 
 
 // Parcours récursif pour calculer les pertes
 double calculerFuitesAval(pStation s) {
