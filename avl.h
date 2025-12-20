@@ -26,7 +26,7 @@ typedef struct Station {
 
 typedef Station* pStation;
 
-// Utilitaires AVL
+// Fonction utile pour AVL
 int max(int a, int b);
 int hauteur(pStation a);
 int equilibre(pStation a);
