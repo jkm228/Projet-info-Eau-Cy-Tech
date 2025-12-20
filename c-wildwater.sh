@@ -2,7 +2,7 @@
 
 
 
-# 1. FORCE LA COMPATIBILITE NUMERIQUE (Le point au lieu de la virgule)
+# 1. FORCE LA COMPATIBILITE NUMERIQUE pour Linux (Le point au lieu de la virgule)
 export LC_NUMERIC=C
 
 # 0. DEBUT CHRONO
@@ -52,10 +52,10 @@ if [ "$COMMANDE" = "histo" ]; then
     if [ $# -ne 3 ]; then echo "Erreur Args"; fin_script 1; fi
 
     # Préparation des données
-    # TRICK : 'tr -d \r' supprime les retours chariots Windows à la volée
+    # TRICK : 'tr -d \r' supprime le caractère de fin de ligne windows pour évitez les problèmes sur linux
     case "$ARG_3" in
         "max")
-            < "$FICHIER_DAT" tr -d '\r' | awk -F';' '$2 ~ "Plant" && $4 != "-" {printf "%s;%.6f;0\n", $2, $4/1000000}' > "$FICHIER_TMP"
+            < "$FICHIER_DAT" tr -d '\r' | awk -F';' '$2 ~ "Plant" && $4 != "-" {printf "%s;%.6f;0\n", $2, $4/1000000}' > "$FICHIER_TMP"  
             HEADER="identifier;max volume (M.m3.year-1)"
             FICHIER_SORTIE="vol_max.dat"
             TITRE="Capacité Maximale"
@@ -85,7 +85,7 @@ if [ "$COMMANDE" = "histo" ]; then
     ./c-wire "$FICHIER_TMP"
     if [ $? -ne 0 ]; then echo "Erreur C"; fin_script 4; fi
 
-    # Génération du fichier de sortie trié (Correction Tri Numérique Décroissant)
+    # Génération du fichier de sortie trié (Tri Numérique Décroissant)
     echo "$HEADER" > "$FICHIER_SORTIE"
     awk -F';' -v c=$COL 'NR>1 {print $1";"$(c)}' "$FICHIER_STATS" | sort -t';' -k2,2nr >> "$FICHIER_SORTIE"
 
@@ -122,7 +122,7 @@ elif [ "$COMMANDE" = "leaks" ]; then
     if [ $# -ne 3 ]; then echo "Erreur Args"; fin_script 1; fi
     TARGET="$ARG_3"
 
-    # Filtrage Leaks avec nettoyage Windows (\r)
+    # Filtrage Leaks
     < "$FICHIER_DAT" tr -d '\r' | awk -F';' '
     BEGIN {OFS=";"}
     $2 ~ "Source|Well|Resurgence|Spring|Fountain" && $3 ~ "Plant" { 
